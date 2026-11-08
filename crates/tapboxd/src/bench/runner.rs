@@ -12,7 +12,6 @@ use super::Bench;
 use super::script::{self, Step};
 use crate::app::{App, AppMsg};
 use crate::player::{Player, SimPlayer};
-use crate::reader::read_tag;
 use crate::store::Store;
 
 /// Same tick rate as the real-time loop.
@@ -120,8 +119,7 @@ pub async fn apply_instant(app: &mut App, bench: &Bench, now: Millis, step: &Ste
     match step {
         Step::Tap(name) => {
             let card = bench.card(name)?;
-            let event = Event::CardPresent { uid: card.uid.clone(), read: read_tag(&card.bytes) };
-            app.handle(now, event).await;
+            app.tap(now, card.uid.clone(), &card.bytes).await;
         }
         Step::Lift => app.handle(now, Event::CardRemoved).await,
         Step::Press(button) => app.handle(now, Event::Button { button: *button, state: ButtonState::Pressed }).await,

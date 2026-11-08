@@ -9,9 +9,11 @@
 
 pub mod app;
 pub mod bench;
+pub mod boxdata;
 pub mod config;
 pub mod outputs;
 pub mod player;
 pub mod reader;
 pub mod resolver;
 pub mod store;
+pub mod web;

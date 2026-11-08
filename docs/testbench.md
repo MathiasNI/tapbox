@@ -17,8 +17,12 @@ Everything lives in [`testbench/`](../testbench):
 ```sh
 cargo run -p tapboxd -- sim            # simulated audio
 cargo run -p tapboxd -- sim --audio mpv  # real audio through mpv (install mpv first)
-cargo run -p tapboxd -- sim --fresh    # forget the saved max volume
+cargo run -p tapboxd -- sim --fresh    # forget saved settings, links and the library index
+cargo run -p tapboxd -- sim --setup    # start in Wi-Fi setup, as a new box does
+cargo run -p tapboxd -- sim --no-web   # console only
 ```
+
+The sim also serves the real web app at **http://127.0.0.1:8080** (`--web <addr>` to change it). It's the same page the box serves, plus a **Testbench** panel to tap cards, press buttons and start AirPlay/Bluetooth; the console and the page drive the same app, so both stay in sync. Wi-Fi is simulated: `Home`, `Home-5G`, `Neighbour` (any password of 8+ characters works, except `wrongpassword`) and the open `Cafe guest`. Uploads land in `testbench/library/` (git-ignored except the two tones); links and settings in `testbench/state/`.
 
 ```text
 tapbox> tap story-440
@@ -35,7 +39,7 @@ tapbox> problems
      0s ago  spotify-link     nothing on this card can be played here: spotify:album:4aawyAB9vmqN3uQ7FjRGTy
 ```
 
-Every red flash also logs a problem with the reason; `problems` lists them, newest first. The web app will show the same list.
+Every red flash also logs a problem with the reason; `problems` lists them, newest first. The web app shows the same list.
 
 Commands run in real time: `hold play 10s` really takes ten seconds.
 
@@ -114,4 +118,5 @@ cargo run -p tapboxd -- card decode '03 9b d2 1b …'
 | Battery | `battery low\|ok` | LiFePO4wered daemon |
 | Power switch | `power cut` | Rocker switch in the battery line; boot via `AUTO_BOOT_VBAT` |
 | Low-battery shutdown | `power off` | LiFePO4wered/Pi+ → shutdown → SIGTERM to tapboxd |
-| Wi-Fi setup, speech | recorded only | comitup, TTS |
+| Wi-Fi setup | simulated networks in the web app | NetworkManager hotspot + captive DNS, Avahi |
+| Speech | recorded only | TTS |

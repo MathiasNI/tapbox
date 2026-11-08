@@ -6,7 +6,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{self, File};
-use std::io::{BufReader, Read as _, Write as _};
+use std::io::{BufReader, Read as _};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
@@ -54,7 +54,10 @@ pub enum Resolution {
 /// Library and cache index.
 #[derive(Debug)]
 pub struct Resolver {
+    /// Everything playable by hash: library and cache.
     files: HashMap<ContentHash, PathBuf>,
+    /// The library part (what the web app lists and can delete).
+    library: BTreeMap<ContentHash, PathBuf>,
     cache_dir: PathBuf,
     allow_http: bool,
 }
@@ -70,6 +73,7 @@ impl Resolver {
     /// If a directory exists but can't be read.
     pub fn new(library_dir: &Path, cache_dir: PathBuf, index_file: Option<&Path>, allow_http: bool) -> Result<Self> {
         let mut files = HashMap::new();
+        let mut library = BTreeMap::new();
         if library_dir.is_dir() {
             let previous = index_file.map(LibraryIndex::load).unwrap_or_default();
             let mut current = LibraryIndex::default();
@@ -88,6 +92,7 @@ impl Resolver {
                     _ => hash_file(&path).with_context(|| format!("hashing {}", path.display()))?,
                 };
                 current.files.insert(name, IndexedFile { stamp, hash });
+                library.insert(hash, path.clone());
                 files.insert(hash, path);
             }
             if let Some(index_file) = index_file
@@ -106,7 +111,7 @@ impl Resolver {
             }
         }
         tracing::info!(files = files.len(), library = %library_dir.display(), "library indexed");
-        Ok(Self { files, cache_dir, allow_http })
+        Ok(Self { files, library, cache_dir, allow_http })
     }
 
     /// Resolve without touching the network.
@@ -139,6 +144,32 @@ impl Resolver {
                 None => Resolution::Download { url: url.to_owned(), hash },
             },
         }
+    }
+
+    /// Library files, by hash.
+    pub fn library_files(&self) -> impl Iterator<Item = (&ContentHash, &PathBuf)> {
+        self.library.iter()
+    }
+
+    /// Whether content with this hash is on the box (library or cache).
+    #[must_use]
+    pub fn has(&self, hash: &ContentHash) -> bool {
+        self.files.contains_key(hash)
+    }
+
+    /// Record a file added to the library (upload).
+    pub fn add_library(&mut self, hash: ContentHash, path: PathBuf) {
+        self.library.insert(hash, path.clone());
+        self.files.insert(hash, path);
+    }
+
+    /// Forget a library file; returns its path so the caller can delete it.
+    pub fn remove_library(&mut self, hash: &ContentHash) -> Option<PathBuf> {
+        let path = self.library.remove(hash)?;
+        if self.files.get(hash) == Some(&path) {
+            self.files.remove(hash);
+        }
+        Some(path)
     }
 
     /// Record a verified download.
@@ -206,17 +237,7 @@ impl LibraryIndex {
 
     /// Atomic write, like the state store: power can go at any moment.
     fn save(&self, path: &Path) -> Result<()> {
-        let dir = path.parent().context("index file has no parent directory")?;
-        fs::create_dir_all(dir)?;
-        let tmp = path.with_extension("json.tmp");
-        {
-            let mut file = File::create(&tmp)?;
-            file.write_all(&serde_json::to_vec(self)?)?;
-            file.sync_all()?;
-        }
-        fs::rename(&tmp, path)?;
-        File::open(dir)?.sync_all()?;
-        Ok(())
+        crate::store::write_atomic(path, &serde_json::to_vec(self)?)
     }
 }
 

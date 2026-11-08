@@ -109,6 +109,12 @@ impl Config {
         self.data_dir.join("state.json")
     }
 
+    /// Card links and box name.
+    #[must_use]
+    pub fn box_file(&self) -> PathBuf {
+        self.data_dir.join("box.json")
+    }
+
     /// Saved library hashes, so boots only hash new or changed files.
     #[must_use]
     pub fn library_index_file(&self) -> PathBuf {

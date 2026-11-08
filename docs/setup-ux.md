@@ -4,15 +4,26 @@ The box has buttons and one status light. Everything else happens in a web app o
 
 ## 1. Getting onto Wi-Fi
 
-Use [comitup](https://github.com/davesteele/comitup). If no known network is in range, the box starts a hotspot (`tapbox-<nnn>`) with a captive portal that opens automatically on iOS and Android. Pick the home network, enter the password, done. The LED blinks orange while waiting.
+The box sets itself up from its own web app; there's no extra portal software.
+
+1. With no known network in range (or after holding both volume buttons for 5 s, or "Change Wi-Fi" in Settings) the box opens an open hotspot, `tapbox-setup`. The light blinks orange.
+2. The phone joins it. NetworkManager's shared mode hands out an address and answers every DNS name with the box, so iOS and Android open the captive-portal sheet by themselves. `tapboxd` answers the probe URLs (`/generate_204`, `/hotspot-detect.html`, `/connecttest.txt`, …) with a redirect to `/`.
+3. The page lists nearby networks (signal, lock). Pick one, type the password, Connect.
+4. The box joins the network with NetworkManager. On a wrong password it reopens the hotspot and the page shows the reason. On success the page says "All set: switch back to *Home* and open `http://<name>.local`".
+5. From then on it's reachable on the home network at `http://<name>.local` (Avahi/mDNS). NetworkManager remembers the network; setup is only needed once.
 
 ## 2. The web app (`http://<name>.local`)
 
-- **Library:** upload files, add URLs or podcast feeds, paste Spotify links.
-- **Link a card:** press "Link card", tap a card on the box, choose what it plays. The app updates live over a WebSocket.
-- **Write a portable card:** the same flow writes the open card format (`card-spec.md`) to the card so it works in any tapbox. Phones can also write cards with NFC Tools.
-- **Problems:** every red flash, newest first, with the card and the reason (e.g. "blank card that isn't linked to anything yet", "download failed: hash mismatch").
-- **Settings:** box name, max volume, what happens when a card is lifted, Bluetooth and AirPlay on/off, updates.
+One HTML file served by `tapboxd` (`crates/tapboxd/src/web/ui.html`), no build step. The page follows the box live over server-sent events (`/api/events`), sends changes to `/api/action`, and streams uploads to `/api/upload`.
+
+- **Now:** what's playing, play/pause, volume (up to the max), and the **problem log**: every red flash, newest first, with the card and the reason ("blank card that isn't linked to anything yet", "download failed: hash mismatch"). Unknown cards get a "Link" button.
+- **Cards:** "Link a card" → tap a card on the box (it doesn't play; the light flashes white) → pick a file from the library, name it, Save. A link on the box overrides what's written on the card. Change or remove links.
+- **Library:** upload music and stories (MP3, M4A/M4B, AAC, OGG, Opus, FLAC, WAV, up to 2 GiB). Files are hashed while streaming in; the same file twice is stored once. Delete warns when cards use the file.
+- **Settings:** box name, max volume, lift behaviour (pause or keep playing), "Pair a phone" for Bluetooth, Wi-Fi status and "Change".
+- **AirPlay and Bluetooth need no setup.** AirPlay (shairport-sync) shows up under the box name. Phones paired once reconnect by themselves; a new phone needs "Pair a phone" (or holding play for 3 s) once.
+- **Later:** add URLs, podcast feeds and Spotify links; write portable cards (`card-spec.md`) from the same flow; updates.
+
+The page has no login: anyone on the home network can manage the box, as with most speakers. Upload names are sanitised and only audio extensions are accepted.
 
 ## 3. Spotify
 

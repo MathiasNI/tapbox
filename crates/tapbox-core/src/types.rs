@@ -236,6 +236,12 @@ pub enum Event {
     /// Wi-Fi setup finished: connected to a network, or the hotspot timed out
     /// (reported by comitup).
     WifiSetupEnded,
+    /// A control command from the web app (same effect as the control card).
+    Control(tapbox_card::ControlCommand),
+    /// Set the volume from the web app (still capped by the max volume).
+    SetVolume(Percent),
+    /// Change what happens when a card is lifted (web app setting).
+    SetOnCardRemoved(crate::OnCardRemoved),
     /// The system is shutting down cleanly: the battery board reached its
     /// low-battery threshold, or someone ran `poweroff`. The daemon sees this
     /// as SIGTERM from systemd. (The master switch cuts power without

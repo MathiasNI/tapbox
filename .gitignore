@@ -2,3 +2,7 @@
 build/
 *.stl
 .DS_Store
+# Testbench runtime data: state, and files uploaded through the web app.
+testbench/state/
+testbench/library/*
+!testbench/library/tone-*.wav

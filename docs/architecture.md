@@ -37,8 +37,8 @@ The daemon is Rust (`tapboxd`), split into small crates. Research and crate choi
 | Bluetooth | Pairing window, auto-accept agent, transport state | BlueZ over D-Bus (`zbus`) |
 | AirPlay | Receiver | shairport-sync + NQPTP |
 | Spotify plugin | Play `spotify:` URIs | go-librespot, local HTTP API |
-| Web app | Library, uploads, link/write cards, settings | `axum`, served by the daemon on `http://<name>.local` |
-| Onboarding | Wi-Fi setup when no network is known | comitup |
+| Web app | Wi-Fi setup, library, uploads, link cards, problems, settings | `axum` in the daemon; one static HTML page, live state over SSE, on `http://<name>.local` |
+| Onboarding | Wi-Fi setup when no network is known | NetworkManager hotspot (shared mode) + captive DNS; the setup page is part of the web app |
 | Control socket | `tapbox-ctl` for hooks and debugging | Unix socket, line protocol |
 
 ## Source priority (arbiter)

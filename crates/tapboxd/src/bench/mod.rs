@@ -27,6 +27,7 @@ use tapbox_core::{Core, Uid};
 use tokio::sync::mpsc;
 
 use crate::app::{App, AppMsg, Parts};
+use crate::boxdata::BoxDataFile;
 use crate::config::Config;
 use crate::player::Player;
 use crate::resolver::Resolver;
@@ -114,12 +115,30 @@ impl Bench {
         store: Option<Store>,
         echo: bool,
     ) -> Result<(App, mpsc::UnboundedReceiver<AppMsg>)> {
+        self.build_app_with(player, store, echo, false)
+    }
+
+    /// As [`Bench::build_app`], optionally starting in Wi-Fi setup mode.
+    ///
+    /// # Errors
+    /// If the library can't be indexed.
+    pub fn build_app_with(
+        &self,
+        player: Player,
+        store: Option<Store>,
+        echo: bool,
+        wifi_setup: bool,
+    ) -> Result<(App, mpsc::UnboundedReceiver<AppMsg>)> {
         let saved = store.as_ref().map(Store::load).unwrap_or_default();
         let core = Core::new(self.config.core.clone(), self.config.uid_sources()?).with_state(saved);
         // Scenarios (memory store) hash fresh and write nothing; `sim` keeps an index on disk.
         let index = store.as_ref().filter(|store| store.is_on_disk()).map(|_| self.config.library_index_file());
         let resolver =
             Resolver::new(&self.config.library_dir, self.config.cache_dir(), index.as_deref(), self.config.allow_http)?;
+        let box_file = match &store {
+            Some(store) if store.is_on_disk() => BoxDataFile::new(self.config.box_file()),
+            _ => BoxDataFile::memory(),
+        };
         App::new(Parts {
             core,
             player,
@@ -127,6 +146,9 @@ impl Bench {
             store,
             max_download_bytes: self.config.max_download_mb * 1024 * 1024,
             echo,
+            box_file,
+            library_dir: self.config.library_dir.clone(),
+            wifi_setup,
         })
     }
 }

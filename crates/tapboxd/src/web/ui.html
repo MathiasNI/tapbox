@@ -1,0 +1,659 @@
+<!doctype html>
+<!--
+  tapbox web app. One file, no build step, no dependencies: open it, read it,
+  change it. The box pushes its whole state over /api/events (server-sent
+  events); the page sends changes to /api/action and uploads to /api/upload.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6efe7">
+<title>tapbox</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%8E%B5%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6efe7; --card: #fffaf4; --ink: #2b2420; --muted: #7a6d63; --line: #e8dccf;
+    --accent: #d9622b; --accent-ink: #fff; --good: #2f9e5b; --bad: #d64545; --warn: #e08a1e;
+    --radius: 18px; --shadow: 0 1px 2px rgba(60,40,20,.06), 0 6px 20px rgba(60,40,20,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1d1916; --card: #27221e; --ink: #f3ebe3; --muted: #a8998c; --line: #3a322c;
+            --shadow: 0 1px 2px rgba(0,0,0,.3); }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { max-width: 600px; margin: 0 auto; padding: 16px 16px 120px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 28px 4px 10px; font-weight: 600; }
+  p { margin: 0 0 10px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  header.top { display: flex; align-items: center; gap: 12px; padding: 8px 4px 4px; }
+  header.top .spacer { flex: 1; }
+
+  .panel { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+  .panel + .panel { margin-top: 12px; }
+  .row { display: flex; align-items: center; gap: 12px; }
+  .row.wrap { flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .list li:first-child { border-top: 0; padding-top: 0; }
+  .list li:last-child { padding-bottom: 0; }
+  .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty { text-align: center; color: var(--muted); padding: 18px 8px; }
+
+  button, .button { font: inherit; border: 0; border-radius: 999px; padding: 10px 18px; cursor: pointer;
+    background: var(--line); color: var(--ink); font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+  button.primary, .button.primary { background: var(--accent); color: var(--accent-ink); }
+  button.danger { background: transparent; color: var(--bad); padding: 8px 10px; }
+  button.ghost { background: transparent; color: var(--muted); padding: 8px 10px; }
+  button.big { padding: 14px 24px; font-size: 17px; }
+  button:disabled { opacity: .5; cursor: default; }
+  button:focus-visible, input:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+  input[type=text], input[type=password], input[type=search] { font: inherit; width: 100%; padding: 12px 14px;
+    border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  label.field { display: block; margin: 12px 0 6px; font-weight: 600; }
+
+  .seg { display: inline-flex; background: var(--line); border-radius: 999px; padding: 3px; }
+  .seg button { background: transparent; padding: 8px 14px; }
+  .seg button.on { background: var(--card); box-shadow: var(--shadow); }
+
+  /* Status light: mirrors the box's LED. */
+  .led { width: 14px; height: 14px; border-radius: 50%; flex: none; position: relative; background: #888; }
+  .led.big { width: 22px; height: 22px; }
+  .led[data-state=idle] { background: #4f9e6a; opacity: .55; }
+  .led[data-state=playing] { background: #2fbf63; box-shadow: 0 0 10px #2fbf63; }
+  .led[data-state=airplay] { background: #9b5de5; box-shadow: 0 0 10px #9b5de5; }
+  .led[data-state=bt-pairing] { background: #3a86ff; animation: blink 1s steps(2) infinite; }
+  .led[data-state=wifi-setup] { background: #f28f1e; animation: blink 1s steps(2) infinite; }
+  .led[data-state=battery-low] { background: #e63946; animation: blink 2s steps(2) infinite; }
+  .led[data-state=booting], .led[data-state=shutting-down] { background: #fff; animation: pulse 1.6s ease-in-out infinite; }
+  .led::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; opacity: 0; }
+  .led.flash-card::after { background: #2fbf63; animation: flash .7s ease-out; }
+  .led.flash-error::after { background: #e63946; animation: flash .7s ease-out; }
+  .led.flash-ack::after { background: #fff; animation: flash .7s ease-out; }
+  @keyframes blink { 50% { opacity: .15; } }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @keyframes flash { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(2.2); } }
+
+  /* Now playing */
+  .now { display: flex; gap: 16px; align-items: center; }
+  .cover { width: 72px; height: 72px; border-radius: 16px; flex: none; display: grid; place-items: center;
+    background: linear-gradient(135deg, #f3d9c4, #e8a87c); color: #6b3a1e; font-size: 30px; font-weight: 700; }
+  .now .title { font-size: 20px; font-weight: 700; }
+  .badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    background: var(--line); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .badge.playing { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+  .badge.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .badge.bad { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+  .vol { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
+  .vol output { width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .problem { align-items: flex-start !important; }
+  .problem .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-top: 8px; flex: none; }
+
+  /* Tabs */
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--card) 92%, transparent);
+    backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); z-index: 5; }
+  nav.tabs .inner { max-width: 600px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+  nav.tabs button { background: transparent; flex-direction: column; gap: 2px; padding: 6px 4px; border-radius: 12px;
+    color: var(--muted); font-size: 12px; font-weight: 600; }
+  nav.tabs button svg { width: 24px; height: 24px; }
+  nav.tabs button.on { color: var(--accent); }
+
+  /* Dialog */
+  dialog { border: 0; border-radius: 22px; padding: 0; width: min(520px, calc(100vw - 24px)); background: var(--card);
+    color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  dialog::backdrop { background: rgba(30,20,10,.45); }
+  dialog .body { padding: 22px; }
+  dialog .actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 22px 22px; }
+  .tap-hint { display: grid; place-items: center; padding: 18px 0 8px; }
+  .tap-hint .ring { width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--accent);
+    display: grid; place-items: center; animation: ring 1.8s ease-in-out infinite; font-size: 40px; }
+  @keyframes ring { 50% { transform: scale(1.08); box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 12%, transparent); } }
+  .pick { max-height: 300px; overflow: auto; margin: 10px 0 4px; }
+  .pick label { display: flex; gap: 10px; align-items: center; padding: 10px 6px; border-radius: 10px; cursor: pointer; }
+  .pick label:hover { background: var(--bg); }
+  .pick input { accent-color: var(--accent); }
+
+  .progress { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  .progress > div { height: 100%; background: var(--accent); width: 0; transition: width .2s; }
+
+  .toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); background: var(--ink); color: var(--bg);
+    padding: 10px 16px; border-radius: 12px; font-weight: 600; z-index: 20; max-width: calc(100vw - 32px); box-shadow: var(--shadow); }
+  .toast.bad { background: var(--bad); color: #fff; }
+
+  /* Wi-Fi setup */
+  .setup { max-width: 460px; margin: 6vh auto 0; text-align: center; }
+  .setup .logo { width: 84px; height: 84px; margin: 0 auto 14px; border-radius: 26px; display: grid; place-items: center;
+    background: linear-gradient(135deg, #f3d9c4, #e8a87c); font-size: 40px; }
+  .setup .panel { text-align: left; margin-top: 18px; }
+  .network { width: 100%; background: transparent; justify-content: flex-start; border-radius: 12px; padding: 12px; font-weight: 500; }
+  .network.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .bars { display: inline-flex; gap: 2px; align-items: flex-end; height: 14px; }
+  .bars i { width: 3px; background: var(--muted); border-radius: 1px; opacity: .3; }
+  .bars i.on { opacity: 1; }
+  .spinner { width: 34px; height: 34px; border: 4px solid var(--line); border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 1s linear infinite; margin: 10px auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Testbench panel */
+  .sim { position: fixed; right: 12px; bottom: 84px; z-index: 6; width: min(360px, calc(100vw - 24px)); }
+  .sim summary { list-style: none; cursor: pointer; margin-left: auto; width: max-content; background: var(--ink); color: var(--bg);
+    padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 13px; box-shadow: var(--shadow); }
+  .sim summary::-webkit-details-marker { display: none; }
+  .sim .panel { margin-top: 8px; max-height: 60vh; overflow: auto; border: 2px dashed var(--line); }
+  .sim .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sim .chips button { padding: 6px 10px; font-size: 13px; font-weight: 500; }
+  .sim h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
+  .sim h3:first-child { margin-top: 0; }
+  .offline { background: var(--bad); color: #fff; text-align: center; padding: 6px; font-weight: 600; font-size: 14px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="offline" id="offline" hidden>Lost contact with the box. Reconnecting…</div>
+<main id="app"><p class="empty">Connecting to the box…</p></main>
+<nav class="tabs" id="tabs" hidden><div class="inner">
+  <button data-tab="now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z" fill="currentColor"/></svg>Now</button>
+  <button data-tab="cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h6M7 14h3"/></svg>Cards</button>
+  <button data-tab="library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>Library</button>
+  <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+</div></nav>
+<details class="sim" id="sim" hidden><summary>Testbench</summary><div class="panel" id="sim-body"></div></details>
+<dialog id="dialog"></dialog>
+
+<script>
+"use strict";
+
+// ---------- state ----------
+let S = null;                 // latest snapshot from the box
+let tab = location.hash.slice(1) || "now";
+let lastFlash = 0;
+let setupChoice = null;       // network picked on the setup page
+let sawSetup = false;         // we were in setup mode this session
+let finishedSetup = null;     // ssid we just joined (shows the "all set" screen)
+const uploads = [];           // { name, progress, error, done }
+
+// What the status light means, in words.
+const STATUS = { booting: "Starting", idle: "Ready", playing: "Playing", airplay: "Phone playing", "bt-pairing": "Bluetooth pairing",
+  "wifi-setup": "Wi-Fi setup", "battery-low": "Battery low", "shutting-down": "Turning off" };
+
+// ---------- helpers ----------
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const shortUid = (uid) => uid ? uid.slice(-6).toUpperCase() : "";
+const cardName = (title, uid) => title || `Card …${shortUid(uid)}`;
+const stem = (name) => name.replace(/\.[^.]+$/, "");
+function ago(unix) {
+  const s = Math.max(0, Math.round(Date.now() / 1000 - unix));
+  if (s < 10) return "just now";
+  if (s < 60) return `${s} s ago`;
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  return new Date(unix * 1000).toLocaleDateString();
+}
+function size(bytes) {
+  if (bytes < 1e6) return `${Math.max(1, Math.round(bytes / 1e3))} kB`;
+  if (bytes < 1e9) return `${(bytes / 1e6).toFixed(1)} MB`;
+  return `${(bytes / 1e9).toFixed(2)} GB`;
+}
+function toast(message, bad = false) {
+  const el = document.createElement("div");
+  el.className = "toast" + (bad ? " bad" : "");
+  el.textContent = message;
+  document.body.append(el);
+  setTimeout(() => el.remove(), bad ? 4500 : 2200);
+}
+async function act(type, fields = {}) {
+  try {
+    const response = await fetch("/api/action", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type, ...fields }) });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `the box said ${response.status}`);
+    }
+    return true;
+  } catch (err) {
+    toast(err.message, true);
+    return false;
+  }
+}
+
+// ---------- live connection ----------
+function connect() {
+  const events = new EventSource("/api/events");
+  events.onmessage = (message) => {
+    $("#offline").hidden = true;
+    S = JSON.parse(message.data);
+    render();
+  };
+  events.onerror = () => { $("#offline").hidden = false; };
+}
+
+// ---------- rendering ----------
+function render() {
+  if (!S) return;
+  document.title = S.name;
+  const inSetup = S.wifi.mode !== "connected";
+  if (inSetup) sawSetup = true;
+  if (!inSetup && sawSetup && finishedSetup === null) finishedSetup = S.wifi.ssid;
+
+  $("#tabs").hidden = inSetup || finishedSetup !== null;
+  if (inSetup) { renderSetup(); }
+  else if (finishedSetup !== null) { renderSetupDone(); }
+  else {
+    const views = { now: viewNow, cards: viewCards, library: viewLibrary, settings: viewSettings };
+    $("#app").innerHTML = header() + (views[tab] || viewNow)();
+    for (const button of document.querySelectorAll("nav.tabs button")) button.classList.toggle("on", button.dataset.tab === tab);
+    bindView();
+  }
+  renderSim();
+  renderFlash();
+  if ($("#dialog").open) refreshDialog();
+}
+
+function header() {
+  return `<header class="top"><h1>${esc(S.name)}</h1><span class="spacer"></span>
+    <span class="small muted">${esc(STATUS[S.led.state] || S.led.state)}</span>
+    <span class="led" id="led" data-state="${S.led.state}" title="Status light: ${esc(S.led.description)}"></span></header>`;
+}
+
+function renderFlash() {
+  if (S.led.flash_count === lastFlash) return;
+  const first = lastFlash === 0;
+  lastFlash = S.led.flash_count;
+  if (first) return;
+  for (const led of document.querySelectorAll(".led")) {
+    led.classList.remove("flash-card", "flash-error", "flash-ack");
+    void led.offsetWidth;
+    led.classList.add(`flash-${S.led.flash}`);
+  }
+}
+
+// --- Now ---
+function viewNow() {
+  const p = S.playback;
+  const title = p.state === "idle" ? "Nothing playing" : cardName(p.title, p.uid);
+  const sub = p.state === "idle" ? "Put a card on the box to start." : (p.state === "playing" ? "Playing" : "Paused");
+  const initial = p.state === "idle" ? "♪" : esc(title.trim().charAt(0).toUpperCase());
+  const problems = S.problems.slice(0, 8);
+  return `
+  <div class="panel">
+    <div class="now">
+      <div class="cover">${initial}</div>
+      <div class="grow">
+        <div class="title ellipsis">${esc(title)}</div>
+        <div class="muted">${esc(sub)}</div>
+      </div>
+      ${p.state === "idle" ? "" : `<button class="primary big" data-act="toggle-play" aria-label="Play or pause">${p.state === "playing" ? "❚❚" : "▶"}</button>`}
+    </div>
+    <div class="vol">
+      <span aria-hidden="true">🔈</span>
+      <input type="range" id="volume" min="0" max="${S.max_volume}" value="${S.volume}" aria-label="Volume">
+      <output id="volume-out">${S.volume}</output>
+    </div>
+    <p class="small muted" style="margin:6px 0 0">Max volume ${S.max_volume}% · change it in Settings</p>
+  </div>
+
+  <h2>Problems</h2>
+  <div class="panel">
+    ${problems.length === 0 ? `<p class="empty">No problems. Every card played fine.</p>` : `<ul class="list">${problems.map((pr) => `
+      <li class="problem"><span class="dot"></span>
+        <div class="grow">
+          <div><b>${esc(cardName(pr.card, pr.uid))}</b> <span class="small muted">· ${ago(pr.at)}</span></div>
+          <div class="small">${esc(pr.message)}</div>
+        </div>
+        ${pr.kind === "unknown-card" || pr.kind === "nothing-playable" ? `<button data-link-uid="${esc(pr.uid)}">Link</button>` : ""}
+      </li>`).join("")}</ul>`}
+  </div>`;
+}
+
+// --- Cards ---
+function viewCards() {
+  return `
+  <div class="panel row">
+    <div class="grow"><b>Make a card play something</b><div class="small muted">Tap a card on the box, then pick a song or story.</div></div>
+    <button class="primary" data-act="link-start">Link a card</button>
+  </div>
+  <h2>Cards on this box (${S.cards.length})</h2>
+  <div class="panel">
+    ${S.cards.length === 0 ? `<p class="empty">No cards linked yet.</p>` : `<ul class="list">${S.cards.map((c) => `
+      <li>
+        <div class="cover" style="width:44px;height:44px;border-radius:12px;font-size:18px">${esc(c.title.charAt(0).toUpperCase())}</div>
+        <div class="grow">
+          <div class="ellipsis"><b>${esc(c.title)}</b></div>
+          <div class="small muted ellipsis">${c.missing ? `<span class="badge bad">file missing</span>` : esc(c.file_name || "")} · <span class="mono">…${esc(shortUid(c.uid))}</span></div>
+        </div>
+        <button class="ghost" data-relink="${esc(c.uid)}">Change</button>
+        <button class="danger" data-unlink="${esc(c.uid)}" aria-label="Unlink ${esc(c.title)}">Remove</button>
+      </li>`).join("")}</ul>`}
+  </div>
+  <p class="small muted" style="margin:10px 4px">Cards with a tapbox recording on them play by themselves. Linking a card here makes it play your file on this box instead.</p>`;
+}
+
+// --- Library ---
+function viewLibrary() {
+  const active = uploads.filter((u) => !u.done || u.error);
+  return `
+  <div class="panel row">
+    <div class="grow"><b>Add music or stories</b><div class="small muted">MP3, M4A/M4B, AAC, OGG, Opus, FLAC or WAV.</div></div>
+    <label class="button primary" for="file-input">Upload</label>
+    <input type="file" id="file-input" accept="audio/*,.mp3,.m4a,.m4b,.aac,.ogg,.opus,.flac,.wav" multiple hidden>
+  </div>
+  ${active.length ? `<div class="panel">${active.map((u) => `
+    <div style="margin-bottom:10px"><div class="row"><span class="grow ellipsis">${esc(u.name)}</span>
+      <span class="small ${u.error ? "" : "muted"}" style="${u.error ? "color:var(--bad)" : ""}">${u.error ? esc(u.error) : `${Math.round(u.progress * 100)}%`}</span></div>
+      ${u.error ? "" : `<div class="progress"><div style="width:${u.progress * 100}%"></div></div>`}</div>`).join("")}</div>` : ""}
+  <h2>On the box (${S.library.length})</h2>
+  <div class="panel">
+    ${S.library.length === 0 ? `<p class="empty">The library is empty. Upload a file to get started.</p>` : `<ul class="list">${S.library.map((f) => `
+      <li>
+        <div class="grow">
+          <div class="ellipsis"><b>${esc(stem(f.name))}</b></div>
+          <div class="small muted">${size(f.size)} · ${f.used_by === 0 ? "not on a card yet" : `on ${f.used_by} card${f.used_by > 1 ? "s" : ""}`}</div>
+        </div>
+        ${f.used_by === 0 ? `<button data-link-file="${esc(f.hash)}">Link</button>` : ""}
+        <button class="danger" data-delete="${esc(f.hash)}" aria-label="Delete ${esc(f.name)}">Delete</button>
+      </li>`).join("")}</ul>`}
+  </div>`;
+}
+
+// --- Settings ---
+function viewSettings() {
+  const wifi = S.wifi.mode === "connected" ? `Connected to <b>${esc(S.wifi.ssid)}</b>` : "Not connected";
+  const pairing = S.led.state === "bt-pairing";
+  return `
+  <h2 style="margin-top:12px">Box</h2>
+  <div class="panel">
+    <label class="field" for="name" style="margin-top:0">Name</label>
+    <div class="row"><input type="text" id="name" value="${esc(S.name)}" maxlength="40"><button data-act="save-name">Save</button></div>
+    <p class="small muted" style="margin-top:6px">Shown here, and in the AirPlay and Bluetooth lists.</p>
+  </div>
+  <h2>Listening</h2>
+  <div class="panel">
+    <label class="field" for="max-volume" style="margin-top:0">Maximum volume: <output id="max-out">${S.max_volume}</output>%</label>
+    <input type="range" id="max-volume" min="10" max="100" step="5" value="${S.max_volume}">
+    <p class="small muted">Hearing protection. Applies to cards, AirPlay and Bluetooth.</p>
+    <label class="field">When a card is lifted</label>
+    <div class="seg" role="group" aria-label="When a card is lifted">
+      <button data-lift="pause" class="${S.on_card_removed === "pause" ? "on" : ""}">Pause</button>
+      <button data-lift="keep-playing" class="${S.on_card_removed === "keep-playing" ? "on" : ""}">Keep playing</button>
+    </div>
+  </div>
+  <h2>Phones</h2>
+  <div class="panel">
+    <div class="row"><div class="grow"><b>AirPlay</b><div class="small muted">Shows up as “${esc(S.name)}” on iPhones and Macs on the same Wi-Fi. Nothing to set up.</div></div></div>
+    <div class="row" style="margin-top:16px"><div class="grow"><b>Bluetooth</b><div class="small muted">${pairing ? "Pairing is open for 2 minutes. Pick the box in your phone's Bluetooth settings." : "Phones you've paired before connect by themselves."}</div></div>
+      <button data-act="pair" ${pairing ? "disabled" : ""}>${pairing ? "Pairing…" : "Pair a phone"}</button></div>
+    <p class="small muted" style="margin-top:12px">A card always wins: tapping one stops AirPlay or Bluetooth and plays the card.</p>
+  </div>
+  <h2>Wi-Fi</h2>
+  <div class="panel row">
+    <div class="grow">${wifi}</div>
+    <button data-act="wifi-setup">Change</button>
+  </div>`;
+}
+
+function bindView() {
+  const on = (sel, event, fn) => { for (const el of document.querySelectorAll(sel)) el.addEventListener(event, fn); };
+  on("[data-act=toggle-play]", "click", () => act("toggle-play"));
+  let volumeTimer;
+  on("#volume", "input", (e) => {
+    $("#volume-out").textContent = e.target.value;
+    clearTimeout(volumeTimer);
+    volumeTimer = setTimeout(() => act("set-volume", { volume: Number(e.target.value) }), 120);
+  });
+  on("[data-act=link-start]", "click", () => openLink());
+  on("[data-link-uid]", "click", (e) => openLink({ uid: e.currentTarget.dataset.linkUid }));
+  on("[data-relink]", "click", (e) => openLink({ uid: e.currentTarget.dataset.relink }));
+  on("[data-link-file]", "click", (e) => openLink({ hash: e.currentTarget.dataset.linkFile }));
+  on("[data-unlink]", "click", (e) => {
+    const card = S.cards.find((c) => c.uid === e.currentTarget.dataset.unlink);
+    confirmDialog(`Remove “${card?.title}”?`, "The card stops playing this file on this box. The file stays in the library.", "Remove",
+      () => act("unlink", { uid: card.uid }));
+  });
+  on("[data-delete]", "click", (e) => {
+    const file = S.library.find((f) => f.hash === e.currentTarget.dataset.delete);
+    const warning = file.used_by ? ` ${file.used_by} card${file.used_by > 1 ? "s" : ""} will stop working until you link them again.` : "";
+    confirmDialog(`Delete “${stem(file.name)}”?`, `The file is removed from the box.${warning}`, "Delete",
+      () => act("delete-file", { hash: file.hash }));
+  });
+  on("#file-input", "change", (e) => { uploadFiles([...e.target.files]); e.target.value = ""; });
+  on("[data-act=save-name]", "click", async () => { if (await act("set-name", { name: $("#name").value })) toast("Saved"); });
+  on("#max-volume", "input", (e) => { $("#max-out").textContent = e.target.value; });
+  on("#max-volume", "change", (e) => act("set-max-volume", { volume: Number(e.target.value) }));
+  on("[data-lift]", "click", (e) => act("set-on-card-removed", { value: e.currentTarget.dataset.lift }));
+  on("[data-act=pair]", "click", () => act("pair-bluetooth"));
+  on("[data-act=wifi-setup]", "click", () => confirmDialog("Change Wi-Fi?",
+    "The box leaves this network and opens its setup hotspot, “tapbox-setup”. Join it with your phone to pick the new network.",
+    "Change Wi-Fi", () => act("wifi-setup")));
+}
+
+// ---------- uploads ----------
+async function uploadFiles(files) {
+  for (const file of files) {
+    const entry = { name: file.name, progress: 0, error: null, done: false };
+    uploads.push(entry);
+    render();
+    try {
+      const result = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const form = new FormData();
+        form.append("file", file, file.name);
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) { entry.progress = e.loaded / e.total; render(); } };
+        xhr.onload = () => {
+          let body = {};
+          try { body = JSON.parse(xhr.responseText); } catch {}
+          xhr.status < 300 ? resolve(body) : reject(new Error(body.error || `upload failed (${xhr.status})`));
+        };
+        xhr.onerror = () => reject(new Error("upload failed: lost contact with the box"));
+        xhr.open("POST", "/api/upload");
+        xhr.send(form);
+      });
+      entry.done = true;
+      const added = result.files?.[0];
+      toast(added?.duplicate ? `Already on the box as “${stem(added.name)}”` : `Added “${stem(added?.name || file.name)}”`);
+    } catch (err) {
+      entry.error = err.message;
+    }
+    render();
+  }
+}
+
+// ---------- link a card ----------
+// Steps: "tap" (waiting for a card) → "pick" (choose a file and title).
+let link = null;
+
+function openLink(preset = {}) {
+  link = { step: preset.uid ? "pick" : "tap", uid: preset.uid || null, hash: preset.hash || null, title: "", since: Date.now() / 1000 - 1, query: "" };
+  if (link.uid) {
+    const existing = S.cards.find((c) => c.uid === link.uid);
+    if (existing) { link.hash = existing.hash; link.title = existing.title; }
+  } else {
+    act("start-linking");
+  }
+  if (link.hash && !link.title) {
+    const file = S.library.find((f) => f.hash === link.hash);
+    if (file) link.title = stem(file.name);
+  }
+  drawDialog();
+  $("#dialog").showModal();
+}
+
+function refreshDialog() {
+  if (!link) return;
+  if (link.step === "tap" && S.last_card && S.last_card.captured && S.last_card.at >= Math.floor(link.since)) {
+    link.uid = S.last_card.uid;
+    link.content = S.last_card.content;
+    const existing = S.cards.find((c) => c.uid === link.uid);
+    if (existing && !link.hash) { link.hash = existing.hash; link.title = existing.title; }
+    link.step = "pick";
+    drawDialog();
+  } else if (link.step === "pick") {
+    // Keep typed text; just refresh the file list if the library changed.
+    const list = $("#pick-list");
+    if (list && list.dataset.count !== String(S.library.length)) drawDialog();
+  }
+}
+
+function drawDialog() {
+  const dialog = $("#dialog");
+  if (link.step === "tap") {
+    dialog.innerHTML = `<div class="body">
+      <h1>Tap a card on the box</h1>
+      <div class="tap-hint"><div class="ring">💳</div></div>
+      <p class="muted" style="text-align:center">Hold the card on top of the box. It won't start playing; the light flashes white when the card is read.</p>
+      ${S.simulated ? `<p class="small muted" style="text-align:center">Testbench: use “Tap a new blank card” in the Testbench panel.</p>` : ""}
+    </div>
+    <div class="actions"><button data-close>Cancel</button></div>`;
+  } else {
+    const existing = S.cards.find((c) => c.uid === link.uid);
+    const files = S.library.filter((f) => f.name.toLowerCase().includes(link.query.toLowerCase()));
+    dialog.innerHTML = `<div class="body">
+      <h1>${existing ? "Change what this card plays" : "What should this card play?"}</h1>
+      <p class="small muted">Card …${esc(shortUid(link.uid))}${link.content ? ` · ${esc(link.content)}` : ""}${existing ? ` · now plays “${esc(existing.title)}”` : ""}</p>
+      ${S.library.length === 0 ? `<p class="empty">The library is empty. Upload a file in the Library tab first.</p>` : `
+      ${S.library.length > 6 ? `<input type="search" id="pick-search" placeholder="Search the library" value="${esc(link.query)}">` : ""}
+      <div class="pick" id="pick-list" data-count="${S.library.length}" role="radiogroup">
+        ${files.map((f) => `<label><input type="radio" name="pick" value="${esc(f.hash)}" ${f.hash === link.hash ? "checked" : ""}>
+          <span class="grow ellipsis">${esc(stem(f.name))}</span><span class="small muted">${size(f.size)}</span></label>`).join("") || `<p class="empty">No match.</p>`}
+      </div>
+      <label class="field" for="link-title">Name on this box</label>
+      <input type="text" id="link-title" maxlength="64" value="${esc(link.title)}" placeholder="e.g. Bedtime songs">`}
+    </div>
+    <div class="actions"><button data-close>Cancel</button><button class="primary" id="link-save" ${S.library.length === 0 ? "disabled" : ""}>Save</button></div>`;
+    dialog.querySelector("#pick-search")?.addEventListener("input", (e) => { link.query = e.target.value; drawDialog(); $("#pick-search").focus(); });
+    for (const radio of dialog.querySelectorAll("input[name=pick]")) radio.addEventListener("change", (e) => {
+      const title = $("#link-title");
+      const old = S.library.find((f) => f.hash === link.hash);
+      link.hash = e.target.value;
+      const file = S.library.find((f) => f.hash === link.hash);
+      if (title && (!title.value || (old && title.value === stem(old.name)))) title.value = stem(file.name);
+      link.title = title?.value || "";
+    });
+    dialog.querySelector("#link-title")?.addEventListener("input", (e) => { link.title = e.target.value; });
+    dialog.querySelector("#link-save")?.addEventListener("click", async () => {
+      if (!link.hash) return toast("Pick a file first", true);
+      const title = ($("#link-title").value || "").trim();
+      if (!title) return toast("Give it a name", true);
+      if (await act("link", { uid: link.uid, title, hash: link.hash })) { closeDialog(); toast(`The card now plays “${title}”`); }
+    });
+  }
+  dialog.querySelector("[data-close]").addEventListener("click", closeDialog);
+}
+
+function closeDialog() {
+  if (link?.step === "tap") act("cancel-linking");
+  link = null;
+  $("#dialog").close();
+}
+$("#dialog").addEventListener("cancel", (e) => { e.preventDefault(); closeDialog(); });
+
+function confirmDialog(title, text, button, onConfirm) {
+  link = null;
+  const dialog = $("#dialog");
+  dialog.innerHTML = `<div class="body"><h1>${esc(title)}</h1><p class="muted" style="margin-top:10px">${esc(text)}</p></div>
+    <div class="actions"><button data-close>Cancel</button><button class="primary" data-ok>${esc(button)}</button></div>`;
+  dialog.querySelector("[data-close]").addEventListener("click", () => dialog.close());
+  dialog.querySelector("[data-ok]").addEventListener("click", () => { dialog.close(); onConfirm(); });
+  dialog.showModal();
+}
+
+// ---------- Wi-Fi setup ----------
+function bars(signal) {
+  const n = signal > 70 ? 4 : signal > 45 ? 3 : signal > 20 ? 2 : 1;
+  return `<span class="bars" aria-label="signal ${signal}%">${[6, 9, 12, 14].map((h, i) => `<i style="height:${h}px" class="${i < n ? "on" : ""}"></i>`).join("")}</span>`;
+}
+
+function renderSetup() {
+  const app = $("#app");
+  if (S.wifi.mode === "connecting") {
+    app.innerHTML = `<div class="setup"><div class="logo">📶</div><h1>Joining ${esc(S.wifi.ssid)}…</h1>
+      <div class="spinner"></div>
+      <p class="muted">The box is leaving its setup hotspot. If your phone loses the connection, switch it back to <b>${esc(S.wifi.ssid)}</b>.</p></div>`;
+    return;
+  }
+  // Keep the password field if the user is typing in it.
+  if ($("#setup-password") && document.activeElement === $("#setup-password") && !S.wifi.error) return;
+  const networks = [...S.networks].sort((a, b) => b.signal - a.signal);
+  const chosen = networks.find((n) => n.ssid === setupChoice);
+  app.innerHTML = `<div class="setup">
+    <div class="logo">🎵</div>
+    <h1>Hi! Let's get ${esc(S.name)} on your Wi-Fi</h1>
+    <p class="muted" style="margin-top:8px">Pick your home network. You only do this once.</p>
+    ${S.wifi.error ? `<p style="color:var(--bad);font-weight:600">Couldn't connect: ${esc(S.wifi.error)}. Try again.</p>` : ""}
+    <div class="panel">
+      ${networks.map((n) => `<button class="network ${n.ssid === setupChoice ? "on" : ""}" data-ssid="${esc(n.ssid)}">
+        ${bars(n.signal)}<span class="grow" style="text-align:left">${esc(n.ssid)}</span>${n.secure ? "🔒" : ""}</button>`).join("")}
+      ${chosen ? `
+        ${chosen.secure ? `<label class="field" for="setup-password">Password for ${esc(chosen.ssid)}</label>
+        <input type="password" id="setup-password" autocomplete="current-password">` : ""}
+        <div style="margin-top:14px;text-align:right"><button class="primary" id="setup-join">Connect</button></div>` : ""}
+    </div>
+    <p class="small muted" style="margin-top:14px">Your phone is connected to the box's own hotspot, “${esc(S.wifi.hotspot || "tapbox-setup")}”.</p>
+  </div>`;
+  for (const button of app.querySelectorAll("[data-ssid]")) button.addEventListener("click", () => {
+    setupChoice = button.dataset.ssid; renderSetup(); $("#setup-password")?.focus();
+  });
+  const join = () => act("wifi-connect", { ssid: setupChoice, password: $("#setup-password")?.value || "" });
+  $("#setup-join")?.addEventListener("click", join);
+  $("#setup-password")?.addEventListener("keydown", (e) => { if (e.key === "Enter") join(); });
+}
+
+function renderSetupDone() {
+  const host = `${S.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "tapbox"}.local`;
+  $("#app").innerHTML = `<div class="setup"><div class="logo">✅</div>
+    <h1>All set!</h1>
+    <p style="margin-top:10px">${esc(S.name)} is on <b>${esc(finishedSetup)}</b>.</p>
+    <div class="panel"><p><b>1.</b> Switch your phone back to <b>${esc(finishedSetup)}</b>.</p>
+      <p><b>2.</b> Open <a href="http://${host}/">http://${host}</a> to add music and link cards.</p>
+      <p class="small muted" style="margin:0">AirPlay and Bluetooth work right away; there's nothing to set up.</p></div>
+    ${S.simulated ? `<p style="margin-top:16px"><button class="primary" id="continue">Continue (testbench)</button></p>` : ""}</div>`;
+  $("#continue")?.addEventListener("click", () => { finishedSetup = null; sawSetup = false; render(); });
+}
+
+// ---------- testbench panel ----------
+function renderSim() {
+  const sim = $("#sim");
+  sim.hidden = !S.simulated;
+  if (!S.simulated) return;
+  const body = $("#sim-body");
+  const linked = S.cards.filter((c) => !S.sim_cards.some((s) => s.name === c.uid));
+  const linkedKey = linked.map((c) => c.uid + c.title).join();
+  if (body.dataset.ready === linkedKey) { $("#sim-led").dataset.state = S.led.state; $("#sim-led-text").textContent = S.led.description; return; }
+  body.dataset.ready = linkedKey;
+  body.innerHTML = `
+    <div class="row"><span class="led big" id="sim-led" data-state="${S.led.state}"></span><span class="small" id="sim-led-text">${esc(S.led.description)}</span></div>
+    <h3>Cards (from testbench/cards)</h3>
+    <div class="chips">${S.sim_cards.map((c) => `<button data-sim-tap="${esc(c.name)}" title="${esc(c.description)}">${esc(c.name)}</button>`).join("")}</div>
+    ${linked.length ? `<h3>Cards you linked</h3><div class="chips">${linked.map((c) => `<button data-sim-tap="${esc(c.uid)}">${esc(c.title)}</button>`).join("")}</div>` : ""}
+    <div class="row" style="margin-top:8px"><button data-sim="sim-tap-new-blank">Tap a new blank card</button><button data-sim="sim-lift">Lift card</button></div>
+    <h3>Buttons</h3>
+    <div class="row wrap"><button data-click="vol-down">−</button><button data-click="play">▶❚❚</button><button data-click="vol-up">+</button>
+      <button data-hold="play" title="Hold play 3 s: Bluetooth pairing">Hold ▶ 3 s</button></div>
+    <h3>Phones</h3>
+    <div class="row wrap"><button data-ext="airplay" data-start="true">AirPlay start</button><button data-ext="airplay" data-start="false">stop</button>
+      <button data-ext="bluetooth" data-start="true">Bluetooth start</button><button data-ext="bluetooth" data-start="false">stop</button></div>
+    <p class="small muted" style="margin:12px 0 0">Same as typing in the terminal running <span class="mono">tapboxd sim</span>.</p>`;
+  for (const b of body.querySelectorAll("[data-sim-tap]")) b.addEventListener("click", () => act("sim-tap", { card: b.dataset.simTap }));
+  for (const b of body.querySelectorAll("[data-sim]")) b.addEventListener("click", () => act(b.dataset.sim));
+  for (const b of body.querySelectorAll("[data-click]")) b.addEventListener("click", () => act("sim-click", { button: b.dataset.click }));
+  for (const b of body.querySelectorAll("[data-hold]")) b.addEventListener("click", () => act("sim-hold", { button: b.dataset.hold, ms: 3000 }));
+  for (const b of body.querySelectorAll("[data-ext]")) b.addEventListener("click", () => act("sim-external", { source: b.dataset.ext, start: b.dataset.start === "true" }));
+}
+
+// ---------- tabs ----------
+for (const button of document.querySelectorAll("nav.tabs button")) button.addEventListener("click", () => {
+  tab = button.dataset.tab; history.replaceState(null, "", `#${tab}`); render(); scrollTo(0, 0);
+});
+setInterval(() => { if (S && tab === "now" && !$("#dialog").open && document.activeElement?.id !== "volume") render(); }, 30000);
+
+connect();
+</script>
+</body>
+</html>

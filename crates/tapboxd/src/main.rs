@@ -31,9 +31,18 @@ enum Cmd {
         /// Simulate audio, or play it through mpv.
         #[arg(long, value_enum, default_value_t = Audio::Sim)]
         audio: Audio,
-        /// Start from a clean state instead of the saved one.
+        /// Start clean: forget saved settings and card links.
         #[arg(long)]
         fresh: bool,
+        /// Serve the web app on this address.
+        #[arg(long, default_value = "127.0.0.1:8080")]
+        web: std::net::SocketAddr,
+        /// Don't serve the web app.
+        #[arg(long)]
+        no_web: bool,
+        /// Start as a box with no known Wi-Fi: the web app shows the setup page.
+        #[arg(long)]
+        setup: bool,
     },
     /// Run scenario scripts on a virtual clock. Exits non-zero on failure.
     Test {
@@ -101,11 +110,13 @@ fn main() -> ExitCode {
 
 async fn run(cli: Cli) -> Result<ExitCode> {
     match cli.command {
-        Cmd::Sim { bench, audio, fresh } => {
+        Cmd::Sim { bench, audio, fresh, web, no_web, setup } => {
             let bench = Bench::load(&bench)?;
             let store = Store::new(bench.config.state_file());
             if fresh {
-                let _ = std::fs::remove_file(bench.config.state_file());
+                for file in [bench.config.state_file(), bench.config.box_file(), bench.config.library_index_file()] {
+                    let _ = std::fs::remove_file(file);
+                }
             }
             let player = match audio {
                 Audio::Sim => Player::Sim(SimPlayer::new(bench::runner::DEFAULT_TRACK_LENGTH)),
@@ -114,7 +125,8 @@ async fn run(cli: Cli) -> Result<ExitCode> {
                     Player::Mpv(MpvPlayer::spawn(&bench.config.data_dir.join("mpv.sock")).await?)
                 }
             };
-            bench::repl::run(&bench, player, Some(store)).await?;
+            let options = bench::repl::Options { web: (!no_web).then_some(web), wifi_setup: setup };
+            bench::repl::run(&bench, player, Some(store), options).await?;
             Ok(ExitCode::SUCCESS)
         }
         Cmd::Test { bench, scenarios } => {

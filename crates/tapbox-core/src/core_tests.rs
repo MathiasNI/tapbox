@@ -322,7 +322,7 @@ fn only_max_volume_survives_restart() {
     b.click(Button::VolumeDown);
     b.tap(9, control("vol-max:50"));
     let saved = b.core.persistent_state();
-    assert_eq!(saved, PersistentState { max_volume: Some(Percent::saturating(50)) });
+    assert_eq!(saved.max_volume, Some(Percent::saturating(50)));
 
     let mut core = Core::new(Config::default(), BTreeMap::new()).with_state(saved);
     let out = core.handle(Millis(0), Event::CardPresent { uid: uid(1), read: content("a") });
@@ -349,4 +349,33 @@ fn player_failure_flashes_error_and_goes_idle() {
         &Command::Problem(Problem { uid: uid(1), kind: ProblemKind::NothingPlayable("spotify:album:x".into()) })
     ));
     assert_eq!(b.core.playback(), Playback::Idle);
+}
+
+#[test]
+fn a_link_on_this_box_overrides_what_is_written_on_the_card() {
+    let mut b = Bench::new();
+    b.core.set_link(uid(1), Some(sources("linked")));
+    let out = b.tap(1, content("written-on-card"));
+    assert!(out.iter().any(|c| matches!(c, Command::Play { sources: s, .. } if *s == sources("linked"))));
+    assert!(b.core.is_linked(&uid(1)));
+    b.lift();
+    b.core.set_link(uid(1), None);
+    let out = b.tap(1, content("written-on-card"));
+    assert!(out.iter().any(|c| matches!(c, Command::Play { sources: s, .. } if *s == sources("written-on-card"))));
+}
+
+#[test]
+fn web_settings_apply_and_persist() {
+    let mut b = Bench::new();
+    assert!(has(&b.send(Event::SetVolume(Percent::saturating(90))), &Command::SetVolume(Percent::saturating(70))));
+    let out = b.send(Event::SetOnCardRemoved(OnCardRemoved::KeepPlaying));
+    assert!(has(&out, &Command::Persist));
+    assert!(b.send(Event::SetOnCardRemoved(OnCardRemoved::KeepPlaying)).is_empty(), "no change, no save");
+    let out = b.send(Event::Control(ControlCommand::MaxVolume(Percent::saturating(60))));
+    assert!(has(&out, &Command::Persist));
+    let saved = b.core.persistent_state();
+    assert_eq!(saved.max_volume, Some(Percent::saturating(60)));
+    assert_eq!(saved.on_card_removed, Some(OnCardRemoved::KeepPlaying));
+    let restored = Core::new(Config::default(), BTreeMap::new()).with_state(saved);
+    assert_eq!(restored.card_removed_behaviour(), OnCardRemoved::KeepPlaying);
 }

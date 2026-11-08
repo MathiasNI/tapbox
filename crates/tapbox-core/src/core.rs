@@ -67,18 +67,21 @@ mod seconds {
     }
 }
 
-/// State that survives a reboot: only the parents' maximum volume. Playback
-/// state (resume positions, current volume) deliberately does not: switching
-/// the box off is a fresh start. Wi-Fi and Bluetooth pairings are kept by
-/// NetworkManager and BlueZ, not here.
+/// Settings that survive a reboot: what a parent set from a control card or
+/// the web app. Playback state (resume positions, current volume)
+/// deliberately does not: switching the box off is a fresh start. Wi-Fi and
+/// Bluetooth pairings are kept by NetworkManager and BlueZ, not here; card
+/// links and the library are kept by the daemon.
 ///
 /// The daemon writes it when the core emits [`Command::Persist`], which only
-/// happens when a vol-max control card changes the limit.
+/// happens when one of these settings changes.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PersistentState {
-    /// Maximum volume set by a control card (overrides the config).
+    /// Maximum volume (overrides the config).
     pub max_volume: Option<Percent>,
+    /// Behaviour when a card is lifted (overrides the config).
+    pub on_card_removed: Option<OnCardRemoved>,
 }
 
 /// What the player is doing, as far as the core knows. For status displays and tests.
@@ -158,13 +161,45 @@ impl Core {
             self.max_volume = max;
             self.volume = self.volume.min(max);
         }
+        if let Some(behaviour) = state.on_card_removed {
+            self.config.on_card_removed = behaviour;
+        }
         self
     }
 
     /// Snapshot of what should survive a reboot.
     #[must_use]
     pub fn persistent_state(&self) -> PersistentState {
-        PersistentState { max_volume: (self.max_volume != self.config.max_volume).then_some(self.max_volume) }
+        PersistentState {
+            max_volume: (self.max_volume != self.config.max_volume).then_some(self.max_volume),
+            on_card_removed: Some(self.config.on_card_removed),
+        }
+    }
+
+    /// Link a card UID to sources on this box, or remove the link (`None`).
+    /// A linked card plays the linked sources here, whatever is written on it.
+    pub fn set_link(&mut self, uid: Uid, sources: Option<Sources>) {
+        // If that card is loaded, the next tap must load the new content, not resume the old.
+        if matches!(&self.state, State::Paused { uid: loaded } if *loaded == uid) {
+            self.state = State::Idle;
+        }
+        self.positions.remove(&uid);
+        match sources {
+            Some(sources) => self.uid_map.insert(uid, sources),
+            None => self.uid_map.remove(&uid),
+        };
+    }
+
+    /// Whether a card UID is linked on this box.
+    #[must_use]
+    pub fn is_linked(&self, uid: &Uid) -> bool {
+        self.uid_map.contains_key(uid)
+    }
+
+    /// Current behaviour when a card is lifted.
+    #[must_use]
+    pub fn card_removed_behaviour(&self) -> OnCardRemoved {
+        self.config.on_card_removed
     }
 
     /// Current playback state.
@@ -220,6 +255,14 @@ impl Core {
             Event::BatteryOk => self.battery_low = false,
             Event::WifiSetupEnded => self.wifi_setup = false,
             Event::PowerOff => self.power_off(&mut out),
+            Event::Control(command) => self.on_control(now, command, &mut out),
+            Event::SetVolume(volume) => self.set_volume(volume, &mut out),
+            Event::SetOnCardRemoved(behaviour) => {
+                if behaviour != self.config.on_card_removed {
+                    self.config.on_card_removed = behaviour;
+                    self.persist_now = true;
+                }
+            }
         }
         self.finish(&mut out);
         out
@@ -239,6 +282,13 @@ impl Core {
     }
 
     fn on_card(&mut self, now: Millis, uid: Uid, read: CardRead, out: &mut Vec<Command>) {
+        // A link made on this box wins over whatever is written on the card.
+        if let Some(sources) = self.uid_map.get(&uid).cloned()
+            && !matches!(read, CardRead::Blank)
+        {
+            self.play_card(uid, sources, out);
+            return;
+        }
         match read {
             CardRead::Invalid { reason } => problem(out, uid, ProblemKind::InvalidCard(reason)),
             CardRead::Blank => match self.uid_map.get(&uid).cloned() {
