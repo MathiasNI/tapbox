@@ -10,8 +10,8 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/MathiasNI/tapbox"
 
 [workspace.dependencies]
-tapbox-card = { path = "crates/tapbox-card" }
-tapbox-core = { path = "crates/tapbox-core" }
+tapbox-card = { path = "crates/tapbox-card", version = "0.1.0" }
+tapbox-core = { path = "crates/tapbox-core", version = "0.1.0" }
 
 anyhow = "1.0.104"
 base64 = "0.23.1"
