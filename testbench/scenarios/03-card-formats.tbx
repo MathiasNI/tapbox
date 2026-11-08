@@ -15,18 +15,28 @@ lift
 
 tap blank-unknown
 expect flash error
+expect problem unknown-card
 expect not cmd play
 lift
 
 tap future-version               # v2 card on a v1 box
 expect flash error
+expect problem invalid-card
 lift
 
 tap broken                       # malformed TLV
 expect flash error
+expect problem invalid-card
 lift
 
 tap spotify-link                 # recognised, but no Spotify plugin yet → error, idle
 expect flash card
 expect flash error
+expect problem nothing-playable
+expect idle
+lift
+
+tap local-path                   # file: paths are never played
+expect flash error
+expect problem nothing-playable
 expect idle

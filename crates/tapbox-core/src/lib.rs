@@ -26,5 +26,6 @@ mod types;
 
 pub use crate::core::{Config, Core, OnCardRemoved, PersistentState, Playback};
 pub use crate::types::{
-    Button, ButtonState, CardRead, Command, Event, ExternalSource, Flash, LedState, Millis, PlayerEvent, Uid,
+    Button, ButtonState, CardRead, Command, Event, ExternalSource, Failure, Flash, LedState, Millis, PlayerEvent,
+    Problem, ProblemKind, Uid,
 };

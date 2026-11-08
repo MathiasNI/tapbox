@@ -1,0 +1,5 @@
+{
+  "uid": "04e0000003a0b0",
+  "description": "Only a file: source: never played (spec section 4), red flash",
+  "card": { "v": 1, "t": "Sneaky local file", "s": ["file:///etc/passwd"] }
+}

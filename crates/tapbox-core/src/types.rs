@@ -89,7 +89,10 @@ pub enum CardRead {
     /// No usable NDEF data; look the UID up in the local mapping.
     Blank,
     /// The card could not be decoded (malformed, newer spec version, …).
-    Invalid,
+    Invalid {
+        /// Why, for the problem log.
+        reason: String,
+    },
 }
 
 /// The three front buttons.
@@ -122,14 +125,81 @@ pub enum ExternalSource {
 }
 
 /// Feedback from the player.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlayerEvent {
     /// Current playback position.
     Position(Duration),
     /// The content played to the end.
     Ended,
-    /// Nothing could be played (no source resolved, decode error, …).
-    Failed,
+    /// The card's content could not be played.
+    Failed(Failure),
+}
+
+/// Why a card's content could not be played.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Failure {
+    /// None of the card's sources can be played on this box (file not in the
+    /// library and no URL, `file:` paths, Spotify without the plugin, …).
+    NothingPlayable(String),
+    /// A download failed or did not match the card's hash.
+    Download(String),
+    /// The player could not open or decode it.
+    Playback(String),
+}
+
+/// Something went wrong with a card. Shown as a red flash on the box and
+/// kept in the problem log for the web app.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Problem {
+    /// The card it happened with.
+    pub uid: Uid,
+    /// What happened.
+    pub kind: ProblemKind,
+}
+
+/// What went wrong.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProblemKind {
+    /// The card's data is broken or from a newer spec version.
+    InvalidCard(String),
+    /// A blank card whose UID is not linked to anything.
+    UnknownCard,
+    /// A control card, but control cards are turned off.
+    ControlCardsDisabled,
+    /// None of the card's sources can be played here.
+    NothingPlayable(String),
+    /// Download failed or the file didn't match the card's hash.
+    DownloadFailed(String),
+    /// The player couldn't play the file or stream.
+    PlaybackFailed(String),
+}
+
+impl ProblemKind {
+    /// Stable kebab-case name (testbench `expect problem`, logs, web app).
+    #[must_use]
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::InvalidCard(_) => "invalid-card",
+            Self::UnknownCard => "unknown-card",
+            Self::ControlCardsDisabled => "control-cards-disabled",
+            Self::NothingPlayable(_) => "nothing-playable",
+            Self::DownloadFailed(_) => "download-failed",
+            Self::PlaybackFailed(_) => "playback-failed",
+        }
+    }
+
+    /// One-line explanation for people.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        match self {
+            Self::InvalidCard(reason) => format!("card data is invalid: {reason}"),
+            Self::UnknownCard => "blank card that isn't linked to anything yet".to_owned(),
+            Self::ControlCardsDisabled => "control card, but control cards are turned off".to_owned(),
+            Self::NothingPlayable(detail) => format!("nothing on this card can be played here: {detail}"),
+            Self::DownloadFailed(detail) => format!("download failed: {detail}"),
+            Self::PlaybackFailed(detail) => format!("could not play it: {detail}"),
+        }
+    }
 }
 
 /// Input to the core.
@@ -239,6 +309,8 @@ pub enum Command {
     Led(LedState),
     /// Flash the LED once.
     Flash(Flash),
+    /// Record a problem (always comes with a red flash).
+    Problem(Problem),
     /// Save [`crate::PersistentState`] now (only after a max-volume change).
     Persist,
 }

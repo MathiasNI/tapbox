@@ -11,6 +11,7 @@ Use [comitup](https://github.com/davesteele/comitup). If no known network is in 
 - **Library:** upload files, add URLs or podcast feeds, paste Spotify links.
 - **Link a card:** press "Link card", tap a card on the box, choose what it plays. The app updates live over a WebSocket.
 - **Write a portable card:** the same flow writes the open card format (`card-spec.md`) to the card so it works in any tapbox. Phones can also write cards with NFC Tools.
+- **Problems:** every red flash, newest first, with the card and the reason (e.g. "blank card that isn't linked to anything yet", "download failed: hash mismatch").
 - **Settings:** box name, max volume, what happens when a card is lifted, Bluetooth and AirPlay on/off, updates.
 
 ## 3. Spotify
@@ -26,7 +27,7 @@ Use [comitup](https://github.com/davesteele/comitup). If no known network is in 
 |---|---|
 | White pulse | Booting |
 | Green flash | Card recognised |
-| Red flash | Unknown card or error |
+| Red flash | Card problem: unknown, broken, or nothing on it can be played. The reason is in the web app's problem list |
 | Blue blinking | Bluetooth pairing open |
 | Purple | AirPlay playing |
 | Orange blinking | Wi-Fi setup mode |

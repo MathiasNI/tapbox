@@ -6,7 +6,8 @@ use tapbox_card::{CardKind, ControlCommand, Percent, Sources};
 
 use crate::buttons::{ButtonTracker, Gesture};
 use crate::types::{
-    Button, ButtonState, CardRead, Command, Event, ExternalSource, Flash, LedState, Millis, PlayerEvent, Uid,
+    Button, ButtonState, CardRead, Command, Event, ExternalSource, Failure, Flash, LedState, Millis, PlayerEvent,
+    Problem, ProblemKind, Uid,
 };
 
 /// What happens when the card is lifted while it plays.
@@ -239,10 +240,10 @@ impl Core {
 
     fn on_card(&mut self, now: Millis, uid: Uid, read: CardRead, out: &mut Vec<Command>) {
         match read {
-            CardRead::Invalid => out.push(Command::Flash(Flash::Error)),
+            CardRead::Invalid { reason } => problem(out, uid, ProblemKind::InvalidCard(reason)),
             CardRead::Blank => match self.uid_map.get(&uid).cloned() {
                 Some(sources) => self.play_card(uid, sources, out),
-                None => out.push(Command::Flash(Flash::Error)),
+                None => problem(out, uid, ProblemKind::UnknownCard),
             },
             CardRead::Card(card) => match card.kind() {
                 CardKind::Content(sources) => self.play_card(uid, sources.clone(), out),
@@ -250,7 +251,7 @@ impl Core {
                     out.push(Command::Flash(Flash::Acknowledge));
                     self.on_control(now, *command, out);
                 }
-                CardKind::Control(_) => out.push(Command::Flash(Flash::Error)),
+                CardKind::Control(_) => problem(out, uid, ProblemKind::ControlCardsDisabled),
             },
         }
     }
@@ -349,8 +350,13 @@ impl Core {
                 self.positions.remove(&loaded);
                 self.state = State::Idle;
             }
-            PlayerEvent::Failed => {
-                out.push(Command::Flash(Flash::Error));
+            PlayerEvent::Failed(failure) => {
+                let kind = match failure {
+                    Failure::NothingPlayable(detail) => ProblemKind::NothingPlayable(detail),
+                    Failure::Download(detail) => ProblemKind::DownloadFailed(detail),
+                    Failure::Playback(detail) => ProblemKind::PlaybackFailed(detail),
+                };
+                problem(out, loaded, kind);
                 self.state = State::Idle;
             }
         }
@@ -448,6 +454,13 @@ impl Core {
             self.persist_now = false;
         }
     }
+}
+
+/// Red flash plus a log entry: every problem is both seen on the box and
+/// explained in the web app.
+fn problem(out: &mut Vec<Command>, uid: Uid, kind: ProblemKind) {
+    out.push(Command::Flash(Flash::Error));
+    out.push(Command::Problem(Problem { uid, kind }));
 }
 
 #[cfg(test)]

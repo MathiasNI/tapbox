@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use tapbox_card::Percent;
-use tapbox_core::{Millis, PlayerEvent};
+use tapbox_core::{Failure, Millis, PlayerEvent};
 
 use crate::resolver::Playable;
 
@@ -92,7 +92,7 @@ impl SimPlayer {
     pub fn force_fail(&mut self) {
         if self.loaded.take().is_some() {
             self.playing = false;
-            self.pending.push(PlayerEvent::Failed);
+            self.pending.push(PlayerEvent::Failed(Failure::Playback("simulated failure".into())));
         }
     }
 

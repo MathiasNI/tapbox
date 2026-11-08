@@ -56,9 +56,9 @@ Resolution rules:
 2. `https:`/`http:` → download or stream. If the same card also has an `ni:` source, the box MUST verify the downloaded file against that hash and MUST NOT play it on mismatch. Verified downloads go into the cache so the card works offline next time.
 3. Plugin schemes → hand to the plugin if enabled.
 4. Unknown schemes are skipped.
-5. If nothing resolves, the box flashes the error state.
+5. If nothing resolves, the box flashes the error state and SHOULD record why (for its web app).
 
-A box MUST NOT accept `file:` or any local path from a card.
+A box MUST NOT accept `file:` or any local path from a card. Such a source is skipped like an unknown scheme; a card with nothing else is an error (rule 5).
 
 ## 5. Manifests (albums, audiobooks, multi-track)
 

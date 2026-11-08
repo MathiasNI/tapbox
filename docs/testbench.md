@@ -31,7 +31,11 @@ tapbox> hold play 3s
   → Bluetooth pairing open for 120s
   → LED blue blinking (Bluetooth pairing)
 tapbox> status
+tapbox> problems
+     0s ago  spotify-link     nothing on this card can be played here: spotify:album:4aawyAB9vmqN3uQ7FjRGTy
 ```
+
+Every red flash also logs a problem with the reason; `problems` lists them, newest first. The web app will show the same list.
 
 Commands run in real time: `hold play 10s` really takes ten seconds.
 
@@ -63,6 +67,7 @@ Same in both modes. One command per line, `#` starts a comment.
 | `track-length <time>` | Length of simulated tracks (default 5 min) |
 | `expect led <state>` | `idle`, `playing`, `airplay`, `bt-pairing`, `wifi-setup`, `battery-low`, `shutting-down` |
 | `expect flash <kind>` | `card`, `error`, `ack`, during the last action |
+| `expect problem <kind>` | A problem was logged during the last action: `invalid-card`, `unknown-card`, `control-cards-disabled`, `nothing-playable`, `download-failed`, `playback-failed` |
 | `expect cmd <name>` | A command ran during the last action: `play`, `pause`, `resume`, `pause-bluetooth`, `mute-airplay`, `open-bluetooth-pairing`, `enter-wifi-setup`, `persist`, … |
 | `expect playing\|paused <card>`, `expect idle` | Playback state |
 | `expect volume <n>`, `expect max-volume <n>` | Volume |

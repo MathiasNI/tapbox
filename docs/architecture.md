@@ -52,6 +52,8 @@ Rule: **last source to start wins.**
 | AirPlay session begins (hook) | Pause card playback, remember position |
 | Card removed | Configurable: pause (default, like Toniebox) or keep playing |
 | Same card tapped again | Resume from saved position |
+| Different card tapped | That card takes over |
+| Card can't be played | Red flash; the reason goes into the problem log (shown in the web app) |
 
 ## Audio stack
 

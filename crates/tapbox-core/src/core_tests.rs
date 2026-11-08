@@ -153,8 +153,18 @@ fn ended_content_restarts_from_zero_next_time() {
 #[test]
 fn invalid_and_unknown_blank_cards_flash_error() {
     let mut b = Bench::new();
-    assert_eq!(b.tap(1, CardRead::Invalid), vec![Command::Flash(Flash::Error)]);
-    assert_eq!(b.tap(2, CardRead::Blank), vec![Command::Flash(Flash::Error)]);
+    let reason = "card uses spec version 2".to_owned();
+    assert_eq!(
+        b.tap(1, CardRead::Invalid { reason: reason.clone() }),
+        vec![
+            Command::Flash(Flash::Error),
+            Command::Problem(Problem { uid: uid(1), kind: ProblemKind::InvalidCard(reason) })
+        ]
+    );
+    assert_eq!(
+        b.tap(2, CardRead::Blank),
+        vec![Command::Flash(Flash::Error), Command::Problem(Problem { uid: uid(2), kind: ProblemKind::UnknownCard })]
+    );
     assert_eq!(b.core.playback(), Playback::Idle);
 }
 
@@ -227,7 +237,13 @@ fn max_volume_card_lowers_volume() {
 #[test]
 fn control_cards_can_be_disabled() {
     let mut b = Bench::with(Config { control_cards: false, ..Config::default() });
-    assert_eq!(b.tap(9, control("bt-pair")), vec![Command::Flash(Flash::Error)]);
+    assert_eq!(
+        b.tap(9, control("bt-pair")),
+        vec![
+            Command::Flash(Flash::Error),
+            Command::Problem(Problem { uid: uid(9), kind: ProblemKind::ControlCardsDisabled })
+        ]
+    );
 }
 
 #[test]
@@ -326,7 +342,11 @@ fn low_battery_led() {
 fn player_failure_flashes_error_and_goes_idle() {
     let mut b = Bench::new();
     b.tap(1, content("a"));
-    let out = b.send(Event::Player(PlayerEvent::Failed));
+    let out = b.send(Event::Player(PlayerEvent::Failed(Failure::NothingPlayable("spotify:album:x".into()))));
     assert!(has(&out, &Command::Flash(Flash::Error)));
+    assert!(has(
+        &out,
+        &Command::Problem(Problem { uid: uid(1), kind: ProblemKind::NothingPlayable("spotify:album:x".into()) })
+    ));
     assert_eq!(b.core.playback(), Playback::Idle);
 }

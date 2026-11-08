@@ -4,9 +4,9 @@
 //! passes the clock in.
 
 use std::collections::VecDeque;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
-use tapbox_core::{Command, Core, Event, Millis, PlayerEvent, Uid};
+use tapbox_core::{Command, Core, Event, Failure, Millis, PlayerEvent, Problem, Uid};
 use tokio::sync::mpsc;
 
 use crate::outputs::{SimOutputs, describe_flash, describe_led};
@@ -28,6 +28,18 @@ pub enum AppMsg {
     },
 }
 
+/// Problems kept for the web app; oldest dropped first.
+pub const PROBLEM_LOG_LEN: usize = 50;
+
+/// A logged problem.
+#[derive(Debug, Clone)]
+pub struct ProblemRecord {
+    /// Wall-clock time, for display.
+    pub at: SystemTime,
+    /// What happened, and with which card.
+    pub problem: Problem,
+}
+
 /// Daemon state: core plus drivers.
 #[derive(Debug)]
 pub struct App {
@@ -43,6 +55,8 @@ pub struct App {
     pending: VecDeque<Event>,
     /// Commands executed since [`App::take_log`] was last called.
     log: Vec<Command>,
+    /// Recent problems, newest last.
+    problems: VecDeque<ProblemRecord>,
     echo: bool,
 }
 
@@ -86,6 +100,7 @@ impl App {
             msgs,
             pending: VecDeque::new(),
             log: Vec::new(),
+            problems: VecDeque::new(),
             echo: parts.echo,
         };
         Ok((app, rx))
@@ -112,6 +127,11 @@ impl App {
     #[must_use]
     pub fn outputs(&self) -> &SimOutputs {
         &self.outputs
+    }
+
+    /// Recent problems, newest last (at most [`PROBLEM_LOG_LEN`]).
+    pub fn problems(&self) -> impl DoubleEndedIterator<Item = &ProblemRecord> {
+        self.problems.iter()
     }
 
     /// Commands executed since the last call.
@@ -153,7 +173,7 @@ impl App {
                     Err(err) => {
                         tracing::warn!(%err, "download failed");
                         if still_wanted {
-                            self.handle(now, Event::Player(PlayerEvent::Failed)).await;
+                            self.handle(now, Event::Player(PlayerEvent::Failed(Failure::Download(err)))).await;
                         }
                     }
                 }
@@ -173,8 +193,9 @@ impl App {
                     Resolution::Ready(playable) => self.load(now, &playable, start).await,
                     Resolution::Download { url, hash } => self.spawn_download(uid, url, hash, start),
                     Resolution::Unresolvable => {
-                        tracing::warn!(%uid, "no playable source on this card");
-                        self.pending.push_back(Event::Player(PlayerEvent::Failed));
+                        let detail = sources.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
+                        tracing::warn!(%uid, sources = %detail, "no playable source on this card");
+                        self.pending.push_back(Event::Player(PlayerEvent::Failed(Failure::NothingPlayable(detail))));
                     }
                 }
                 Ok(())
@@ -185,6 +206,14 @@ impl App {
             Command::SetVolume(volume) => self.player.set_volume(volume).await,
             Command::Led(state) => {
                 self.outputs.set_led(state);
+                Ok(())
+            }
+            Command::Problem(problem) => {
+                tracing::warn!(uid = %problem.uid, problem = problem.kind.name(), "{}", problem.kind.describe());
+                if self.problems.len() == PROBLEM_LOG_LEN {
+                    self.problems.pop_front();
+                }
+                self.problems.push_back(ProblemRecord { at: SystemTime::now(), problem });
                 Ok(())
             }
             Command::Flash(flash) => {
@@ -224,7 +253,7 @@ impl App {
         }
         if let Err(err) = self.player.load(now, playable, start).await {
             tracing::error!(%err, "player failed to load");
-            self.pending.push_back(Event::Player(PlayerEvent::Failed));
+            self.pending.push_back(Event::Player(PlayerEvent::Failed(Failure::Playback(format!("{err:#}")))));
         }
     }
 
@@ -270,6 +299,7 @@ pub fn describe(command: &Command) -> String {
         Command::SayName => "say the box name and address".into(),
         Command::Led(state) => format!("LED {}", describe_led(*state)),
         Command::Flash(flash) => format!("LED {}", describe_flash(*flash)),
+        Command::Problem(problem) => format!("problem logged for card {}: {}", problem.uid, problem.kind.describe()),
         Command::Persist => "save state".into(),
     }
 }
@@ -291,6 +321,7 @@ pub fn command_name(command: &Command) -> &'static str {
         Command::SayName => "say-name",
         Command::Led(_) => "led",
         Command::Flash(_) => "flash",
+        Command::Problem(_) => "problem",
         Command::Persist => "persist",
     }
 }

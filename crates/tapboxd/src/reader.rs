@@ -13,7 +13,7 @@ pub fn read_tag(user_memory: &[u8]) -> CardRead {
         Ok(TagContent::Blank) => CardRead::Blank,
         Err(err) => {
             tracing::warn!(%err, "card could not be decoded");
-            CardRead::Invalid
+            CardRead::Invalid { reason: err.to_string() }
         }
     }
 }

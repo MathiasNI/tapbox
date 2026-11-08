@@ -12,7 +12,7 @@ use anyhow::{Context as _, Result, bail};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tapbox_card::Percent;
-use tapbox_core::PlayerEvent;
+use tapbox_core::{Failure, PlayerEvent};
 use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader};
 use tokio::net::UnixStream;
 use tokio::net::unix::OwnedWriteHalf;
@@ -39,6 +39,8 @@ struct Message {
     id: Option<u64>,
     data: Option<Value>,
     reason: Option<String>,
+    /// Set on `end-file` with reason `error`.
+    file_error: Option<String>,
 }
 
 impl MpvPlayer {
@@ -105,7 +107,7 @@ impl MpvPlayer {
     pub(super) fn poll(&mut self) -> Vec<PlayerEvent> {
         let mut events = Vec::new();
         while let Ok(event) = self.events.try_recv() {
-            if matches!(event, PlayerEvent::Ended | PlayerEvent::Failed) {
+            if matches!(event, PlayerEvent::Ended | PlayerEvent::Failed(_)) {
                 self.loaded = None;
             }
             events.push(event);
@@ -137,7 +139,7 @@ async fn read_events(mut reader: BufReader<tokio::net::unix::OwnedReadHalf>, tx:
         match reader.read_line(&mut line).await {
             Ok(0) | Err(_) => {
                 tracing::error!("mpv IPC connection closed");
-                let _ = tx.send(PlayerEvent::Failed);
+                let _ = tx.send(PlayerEvent::Failed(Failure::Playback("mpv stopped responding".into())));
                 return;
             }
             Ok(_) => {}
@@ -162,7 +164,9 @@ async fn read_events(mut reader: BufReader<tokio::net::unix::OwnedReadHalf>, tx:
             // "stop" (replaced by another loadfile), "quit" and "redirect" are not ends.
             Some("end-file") => match message.reason.as_deref() {
                 Some("eof") => PlayerEvent::Ended,
-                Some("error") => PlayerEvent::Failed,
+                Some("error") => PlayerEvent::Failed(Failure::Playback(
+                    message.file_error.unwrap_or_else(|| "mpv could not open or decode it".into()),
+                )),
                 _ => continue,
             },
             _ => continue,

@@ -23,6 +23,7 @@ enum Input {
     Done,
     Status,
     Cards,
+    Problems,
     Help,
     Quit,
 }
@@ -34,7 +35,7 @@ cards:    tap <card>   lift
 buttons:  click|press|release <play|vol-up|vol-down>   hold <button> <3s>
 sources:  bluetooth start|stop   airplay start|stop
 other:    battery low|ok   wifi done   power off|cut   player end|fail   track-length <time>   wait <time>
-checks:   expect ... (as in scenario files)   status   cards   help   quit";
+checks:   expect ... (as in scenario files)   status   problems   cards   help   quit";
 
 /// Run the console until `quit`, Ctrl-D or Ctrl-C.
 ///
@@ -76,6 +77,7 @@ pub async fn run(bench: &Bench, player: Player, store: Option<Store>) -> Result<
                     Some(Input::Done) => {}
                     Some(Input::Help) => println!("{HELP}"),
                     Some(Input::Cards) => print_cards(bench),
+                    Some(Input::Problems) => print_problems(&app, bench),
                     Some(Input::Status) => print_status(&app, bench),
                     Some(Input::Step(Step::Expect { expectation, negated })) => {
                         match script::check(&app, bench, &last, &expectation, negated) {
@@ -124,6 +126,7 @@ async fn read_stdin(tx: mpsc::Sender<Input>) {
         let input = match line.trim() {
             "help" | "?" => Input::Help,
             "cards" => Input::Cards,
+            "problems" => Input::Problems,
             "status" | "s" => Input::Status,
             "quit" | "exit" | "q" => Input::Quit,
             _ => match script::parse_line(&line) {
@@ -175,6 +178,23 @@ fn print_cards(bench: &Bench) {
     for card in bench.cards.values() {
         println!("  {:<18} uid {}  {}", card.name, card.uid, card.description.as_deref().unwrap_or(""));
     }
+}
+
+fn print_problems(app: &App, bench: &Bench) {
+    let mut any = false;
+    for record in app.problems().rev() {
+        any = true;
+        let card = card_name(bench, &record.problem.uid);
+        let ago = record.at.elapsed().map_or(0, |elapsed| elapsed.as_secs());
+        println!("  {ago:>4}s ago  {card:<16} {}", record.problem.kind.describe());
+    }
+    if !any {
+        println!("  no problems");
+    }
+}
+
+fn card_name(bench: &Bench, uid: &tapbox_core::Uid) -> String {
+    bench.cards.values().find(|card| card.uid == *uid).map_or_else(|| uid.to_string(), |card| card.name.clone())
 }
 
 fn print_status(app: &App, bench: &Bench) {

@@ -18,6 +18,8 @@
 //!
 //! expect led <state>      idle, playing, airplay, bt-pairing, wifi-setup, battery-low, booting
 //! expect flash <kind>     card, error, ack  (during the last action)
+//! expect problem <kind>   invalid-card, unknown-card, control-cards-disabled,
+//!                         nothing-playable, download-failed, playback-failed  (during the last action)
 //! expect cmd <name>       a command ran during the last action, e.g. pause-bluetooth
 //! expect playing|paused <card>
 //! expect idle
@@ -87,6 +89,8 @@ pub enum Expectation {
     Flash(Flash),
     /// A command ran during the last action.
     Command(String),
+    /// A problem of this kind was logged during the last action.
+    Problem(String),
     /// This card is playing.
     Playing(String),
     /// This card is loaded and paused.
@@ -151,6 +155,7 @@ fn parse_expectation(words: &[&str]) -> Result<Expectation> {
         ["led", state] => Expectation::Led(parse_led(state)?),
         ["flash", kind] => Expectation::Flash(parse_flash(kind)?),
         ["cmd", name] => Expectation::Command((*name).to_owned()),
+        ["problem", kind] => Expectation::Problem((*kind).to_owned()),
         ["playing", card] => Expectation::Playing((*card).to_owned()),
         ["paused", card] => Expectation::Paused((*card).to_owned()),
         ["idle"] => Expectation::Idle,
@@ -242,6 +247,16 @@ fn evaluate(app: &App, bench: &Bench, last: &[Command], expectation: &Expectatio
         }
         Expectation::Command(name) => {
             (last.iter().any(|command| command_name(command) == name), format!("the last action ran [{}]", names()))
+        }
+        Expectation::Problem(kind) => {
+            let logged: Vec<&str> = last
+                .iter()
+                .filter_map(|command| match command {
+                    Command::Problem(problem) => Some(problem.kind.name()),
+                    _ => None,
+                })
+                .collect();
+            (logged.contains(&kind.as_str()), format!("the last action logged problems [{}]", logged.join(", ")))
         }
         Expectation::Playing(card) => {
             let uid = &bench.card(card)?.uid;
