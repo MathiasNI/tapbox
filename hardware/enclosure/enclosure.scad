@@ -72,13 +72,13 @@ pi_hole_dx = 23;
 pi_hole_dz = 58;
 pi_hole_d = 2.7;      // M2.5 standoffs
 
-/* [Power button (bottom)] */
-// Momentary 12 mm flush metal push-button, wired to the LiFePO4wered/Pi+
-// external button pads. Clear of the arcade buttons (front) and the lid
-// electronics (back); the 4 mm feet keep it off the table.
-power_btn_d = 12.3;   // through hole for an M12 thread
-power_btn_x = 65;     // centred left-right
-power_btn_y = 38;     // from the front face
+/* [Power switch (back lid)] */
+// Miniature latching toggle (MTS-101 style, M6 bushing) in the battery line.
+// Low on the lid, clear of the lid screw at x = 118 and the Pi above z ~ 23.
+switch_d = 6.3;       // through hole for the M6 bushing
+switch_x = 100;       // model x (seen from the front; it is on the left seen from the back)
+switch_z = 14;        // from bottom
+switch_notch = 16;    // square cut in the lid ledge around the switch body (~8 x 13 mm)
 
 /* [Feet] */
 foot_d = 10;
@@ -198,8 +198,9 @@ module shell_cuts() {
     translate([W / 2 - usbc_w / 2 - 3, D - lid_t - flange_t - 1, usbc_cz - usbc_h / 2 - 3])
         cube([usbc_w + 6, flange_t + 2, usbc_h + 6]);
 
-    // power button through the bottom wall
-    translate([power_btn_x, power_btn_y, -1]) cylinder(d = power_btn_d, h = wall + 2);
+    // notch in the ledge so the power switch body passes (it sits below the ledge opening)
+    translate([switch_x - switch_notch / 2, D - lid_t - flange_t - 1, switch_z - switch_notch / 2])
+        cube([switch_notch, flange_t + 2, switch_notch]);
 
     // feet recesses
     for (fx = foot_x, fy = foot_y)
@@ -232,6 +233,8 @@ module lid() {
         for (dx = [-pi_hole_dx / 2, pi_hole_dx / 2], dz = [-pi_hole_dz / 2, pi_hole_dz / 2])
             translate([pi_cx + dx, D + 1, pi_cz + dz]) rotate([90, 0, 0])
                 cylinder(d = pi_hole_d, h = lid_t + 2);
+        // power switch
+        translate([switch_x, D + 1, switch_z]) rotate([90, 0, 0]) cylinder(d = switch_d, h = lid_t + 2);
     }
 }
 

@@ -10,11 +10,11 @@ use tokio::io::{AsyncBufReadExt as _, BufReader};
 use tokio::sync::mpsc;
 
 use super::Bench;
-use super::runner::{CLICK, TICK, apply_instant};
+use super::runner::{CLICK, DEFAULT_TRACK_LENGTH, TICK, apply_instant};
 use super::script::{self, Step};
 use crate::app::App;
 use crate::outputs::describe_led;
-use crate::player::Player;
+use crate::player::{Player, SimPlayer};
 use crate::store::Store;
 
 enum Input {
@@ -33,7 +33,7 @@ const HELP: &str = "\
 cards:    tap <card>   lift
 buttons:  click|press|release <play|vol-up|vol-down>   hold <button> <3s>
 sources:  bluetooth start|stop   airplay start|stop
-other:    battery low|ok   power off   player end|fail   track-length <time>   wait <time>
+other:    battery low|ok   power off|cut   player end|fail   track-length <time>   wait <time>
 checks:   expect ... (as in scenario files)   status   cards   help   quit";
 
 /// Run the console until `quit`, Ctrl-D or Ctrl-C.
@@ -41,7 +41,7 @@ checks:   expect ... (as in scenario files)   status   cards   help   quit";
 /// # Errors
 /// If the app can't be built.
 pub async fn run(bench: &Bench, player: Player, store: Option<Store>) -> Result<()> {
-    let (mut app, mut msgs) = bench.build_app(player, store, true)?;
+    let (mut app, mut msgs) = bench.build_app(player, store.clone(), true)?;
     println!("tapbox testbench. Simulated hardware; type `help`.\n{HELP}\n");
     print_cards(bench);
 
@@ -81,6 +81,20 @@ pub async fn run(bench: &Bench, player: Player, store: Option<Store>) -> Result<
                         match script::check(&app, bench, &last, &expectation, negated) {
                             Ok(()) => println!("  ✓"),
                             Err(err) => println!("  ✗ {err}"),
+                        }
+                    }
+                    Some(Input::Step(Step::PowerCut)) => {
+                        if matches!(app.player(), Player::Mpv(_)) {
+                            println!("  ! `power cut` needs the simulated player");
+                        } else {
+                            println!("  ⚡ power cut: everything not saved is gone; booting again");
+                            (app, msgs) = bench.build_app(
+                                Player::Sim(SimPlayer::new(DEFAULT_TRACK_LENGTH)),
+                                store.clone(),
+                                true,
+                            )?;
+                            app.tick(now()).await;
+                            last.clear();
                         }
                     }
                     Some(Input::Step(step)) => {

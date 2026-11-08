@@ -1,4 +1,4 @@
-# Track end, low battery, safe shutdown.
+# Track end, low battery, long hold.
 track-length 10s
 tap song-660
 wait 11s
@@ -14,8 +14,6 @@ expect led battery-low
 battery ok
 expect led playing
 
-hold play 10s                    # long hold: save and shut down
-expect cmd pause
-expect cmd persist
-expect cmd shutdown
-expect not cmd open-bluetooth-pairing
+hold play 15s                    # long holds do nothing but open pairing on release
+expect cmd open-bluetooth-pairing
+expect playing song-660

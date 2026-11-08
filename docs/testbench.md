@@ -56,7 +56,8 @@ Same in both modes. One command per line, `#` starts a comment.
 | `wait <time>` | `500ms`, `3s`, `2m` |
 | `bluetooth start\|stop`, `airplay start\|stop` | Another source takes or leaves the speaker |
 | `battery low\|ok` | Battery board report |
-| `power off` | The system shuts down (bottom power button, empty battery): the daemon must save first |
+| `power off` | Clean shutdown (low battery, `poweroff`): the daemon must save first |
+| `power cut` | Master switch OFF then ON: power gone with no warning, then a fresh boot from whatever was saved |
 | `player end\|fail` | End or fail the current track now |
 | `track-length <time>` | Length of simulated tracks (default 5 min) |
 | `expect led <state>` | `idle`, `playing`, `airplay`, `bt-pairing`, `wifi-setup`, `battery-low`, `shutting-down` |
@@ -105,5 +106,6 @@ cargo run -p tapboxd -- card decode '03 9b d2 1b …'
 | Audio | simulated clock, or mpv | mpv → PipeWire → MAX98357A |
 | Bluetooth / AirPlay | `bluetooth` / `airplay` commands | BlueZ over D-Bus, shairport-sync hooks |
 | Battery | `battery low\|ok` | LiFePO4wered daemon |
-| Power button | `power off` | LiFePO4wered/Pi+ button → shutdown → SIGTERM to tapboxd |
-| Shutdown, Wi-Fi setup, speech | recorded only | systemd, comitup, TTS |
+| Power switch | `power cut` | Toggle in the battery line; boot via `AUTO_BOOT_VBAT` |
+| Low-battery shutdown | `power off` | LiFePO4wered/Pi+ → shutdown → SIGTERM to tapboxd |
+| Wi-Fi setup, speech | recorded only | comitup, TTS |

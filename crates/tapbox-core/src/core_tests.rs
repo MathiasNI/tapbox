@@ -252,19 +252,6 @@ fn hold_play_three_seconds_opens_pairing_for_two_minutes() {
 }
 
 #[test]
-fn hold_play_ten_seconds_shuts_down_after_saving() {
-    let mut b = Bench::new();
-    b.tap(1, content("a"));
-    b.press(Button::Play);
-    let out = b.wait(10_000);
-    let pause = out.iter().position(|c| *c == Command::Pause).unwrap();
-    let persist = out.iter().position(|c| *c == Command::Persist).unwrap();
-    let shutdown = out.iter().position(|c| *c == Command::Shutdown).unwrap();
-    assert!(pause < persist && persist < shutdown);
-    assert!(!has(&b.release(Button::Play), &Command::OpenBluetoothPairing(Duration::from_secs(120))));
-}
-
-#[test]
 fn power_off_pauses_saves_and_shows_shutdown_led() {
     let mut b = Bench::new();
     b.tap(1, content("a"));
@@ -274,7 +261,6 @@ fn power_off_pauses_saves_and_shows_shutdown_led() {
     let persist = out.iter().position(|c| *c == Command::Persist).unwrap();
     assert!(pause < persist);
     assert!(has(&out, &Command::Led(LedState::ShuttingDown)));
-    assert!(!has(&out, &Command::Shutdown), "the system is already shutting down");
     assert_eq!(b.core.persistent_state().positions_ms.get(&uid(1)), Some(&42_000));
 }
 

@@ -13,6 +13,7 @@ use super::script::{self, Step};
 use crate::app::{App, AppMsg};
 use crate::player::{Player, SimPlayer};
 use crate::reader::read_tag;
+use crate::store::Store;
 
 /// Same tick rate as the real-time loop.
 pub const TICK: Duration = Duration::from_millis(100);
@@ -29,19 +30,25 @@ pub struct VirtualBench<'a> {
     msgs: mpsc::UnboundedReceiver<AppMsg>,
     now: Millis,
     last: Vec<Command>,
+    store: Store,
 }
 
 impl<'a> VirtualBench<'a> {
-    /// Fresh state (nothing persisted), simulated player.
+    /// Fresh state (an empty in-memory store), simulated player.
     ///
     /// # Errors
     /// If the app can't be built.
     pub async fn new(bench: &'a Bench) -> Result<Self> {
-        let (app, msgs) = bench.build_app(Player::Sim(SimPlayer::new(DEFAULT_TRACK_LENGTH)), None, false)?;
-        let mut virtual_bench = Self { bench, app, msgs, now: Millis(0), last: Vec::new() };
-        virtual_bench.app.tick(virtual_bench.now).await; // boot
+        let store = Store::memory();
+        let (app, msgs) = Self::boot(bench, &store)?;
+        let mut virtual_bench = Self { bench, app, msgs, now: Millis(0), last: Vec::new(), store };
+        virtual_bench.app.tick(virtual_bench.now).await;
         virtual_bench.app.take_log();
         Ok(virtual_bench)
+    }
+
+    fn boot(bench: &Bench, store: &Store) -> Result<(App, mpsc::UnboundedReceiver<AppMsg>)> {
+        bench.build_app(Player::Sim(SimPlayer::new(DEFAULT_TRACK_LENGTH)), Some(store.clone()), false)
     }
 
     /// Run one step.
@@ -64,6 +71,13 @@ impl<'a> VirtualBench<'a> {
                 self.button(*button, ButtonState::Released).await;
             }
             Step::Wait(duration) => self.advance(*duration).await,
+            Step::PowerCut => {
+                // Everything in memory is gone; only what was saved survives.
+                let (app, msgs) = Self::boot(self.bench, &self.store)?;
+                self.app = app;
+                self.msgs = msgs;
+                self.app.tick(self.now).await;
+            }
             Step::Expect { expectation, negated } => {
                 return script::check(&self.app, self.bench, &self.last, expectation, *negated);
             }
@@ -116,6 +130,7 @@ pub async fn apply_instant(app: &mut App, bench: &Bench, now: Millis, step: &Ste
         Step::External(source, false) => app.handle(now, Event::ExternalStopped(*source)).await,
         Step::Battery(low) => app.handle(now, if *low { Event::BatteryLow } else { Event::BatteryOk }).await,
         Step::PowerOff => app.handle(now, Event::PowerOff).await,
+        Step::PowerCut => bail!("`power cut` is handled by the runner"),
         Step::PlayerEnd | Step::PlayerFail | Step::TrackLength(_) => {
             let Player::Sim(player) = app.player_mut() else {
                 bail!("`player` and `track-length` need the simulated player (not --audio mpv)");

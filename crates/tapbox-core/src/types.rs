@@ -163,9 +163,10 @@ pub enum Event {
     BatteryLow,
     /// The battery is charging or no longer low.
     BatteryOk,
-    /// The system is powering off: the bottom power button was held, the
-    /// battery ran empty, or someone ran `poweroff`. The daemon sees this as
-    /// SIGTERM from systemd and has a few seconds to save state.
+    /// The system is shutting down cleanly: the battery board reached its
+    /// low-battery threshold, or someone ran `poweroff`. The daemon sees this
+    /// as SIGTERM from systemd and has a few seconds to save state. (The
+    /// master switch cuts power without warning; nothing is sent for that.)
     PowerOff,
 }
 
@@ -231,8 +232,6 @@ pub enum Command {
     EnterWifiSetup,
     /// Speak the box's name and address.
     SayName,
-    /// Shut the system down safely.
-    Shutdown,
     /// Set the LED's steady state.
     Led(LedState),
     /// Flash the LED once.

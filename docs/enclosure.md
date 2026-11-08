@@ -31,7 +31,7 @@ Parts come out in print orientation. The model has not been test-rendered yet; c
 | Speaker mount | 4 × M2.5 inserts on a 50 mm square around the grille (`speaker_screw_spacing`, match your driver) |
 | Pi Zero mount | M2.5 holes in the lid, 23 × 58, centred at x = 65, 56 from the bottom |
 | USB-C cutout | 10 × 4.5, centred, 12 from the bottom |
-| Power button | Ø12.3 hole in the bottom at x = 65, 38 from the front (`power_btn_*`), for a 12 mm momentary push-button |
+| Power switch | Ø6.3 hole in the back lid at x = 100 (model x; left of the charge port seen from the back), 14 from the bottom (`switch_*`), for an M6 toggle; 16 × 16 notch in the lid ledge so the switch body clears it, like the USB-C notch |
 | Feet | 4 × Ø10 recesses, 1 deep |
 
 Coordinates "from top-left" are as seen from the front.
@@ -43,8 +43,8 @@ Coordinates "from top-left" are as seen from the front.
 3. 50 mm speaker behind the grille on four M2.5 inserts, foam gasket, acoustic fabric.
 4. Arcade buttons below the speaker.
 5. Pi Zero 2 W + LiFePO4wered/Pi+ + MAX98357A on the inside of the back lid. The whole electronics stack comes out with the lid.
-6. Panel-mount USB-C in the lid.
-7. Power button through the bottom, nut inside, plug-in lead to the battery board on the lid.
+6. Panel-mount USB-C and the power toggle in the lid, side by side low down.
+7. 18650 cell in its own holder on the floor, between the arcade buttons and the lid stack, with the fuse in its + lead; a ≥ 3 A plug to the battery board so the lid still comes off.
 
 About 0.9 L of sealed volume, enough for a 50 mm driver. Keep it airtight with gasket tape under the lid.
 
@@ -59,8 +59,8 @@ About 0.9 L of sealed volume, enough for a 50 mm driver. Keep it airtight with g
 
 1. Press in heat-set inserts: 4 in the lid bosses, 4 at the speaker.
 2. Glue fabric behind the grille, mount the speaker with gasket tape.
-3. Snap in the buttons, fit the LED and light pipe, and fit the power button in the bottom (nut inside).
+3. Snap in the buttons, fit the LED and light pipe. Fix the 18650 holder to the floor (VHB tape or cable ties).
 4. Fix the PN532 under the tray floor; **test read range with a card before closing**.
-5. Build the lid stack: standoffs, Pi + LiFePO4wered/Pi+, amp, USB-C.
+5. Build the lid stack: standoffs, Pi + LiFePO4wered/Pi+ (its own cell holder left empty), amp, USB-C, toggle switch.
 6. Wire with plugs so the lid comes off without soldering.
 7. Gasket tape on the lid, close with 4 × M3 × 8.

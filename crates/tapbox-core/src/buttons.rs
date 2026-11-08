@@ -7,10 +7,8 @@ use crate::types::{Button, ButtonState, Millis};
 
 /// A press shorter than this is a click.
 pub(crate) const CLICK_MAX: Duration = Duration::from_secs(1);
-/// Hold play this long (and release before [`SHUTDOWN_HOLD`]) to open Bluetooth pairing.
+/// Hold play at least this long, then release, to open Bluetooth pairing.
 pub(crate) const PAIRING_HOLD: Duration = Duration::from_secs(3);
-/// Hold play this long to shut down. Fires while still held.
-pub(crate) const SHUTDOWN_HOLD: Duration = Duration::from_secs(10);
 /// Hold both volume buttons this long to enter Wi-Fi setup. Fires while still held.
 pub(crate) const WIFI_SETUP_HOLD: Duration = Duration::from_secs(5);
 
@@ -20,7 +18,6 @@ pub(crate) enum Gesture {
     VolumeUp,
     VolumeDown,
     BluetoothPairing,
-    Shutdown,
     WifiSetup,
 }
 
@@ -72,13 +69,6 @@ impl ButtonTracker {
     }
 
     pub(crate) fn on_tick(&mut self, now: Millis) -> Option<Gesture> {
-        if let Some(&at) = self.pressed_at.get(&Button::Play)
-            && !self.consumed.contains(&Button::Play)
-            && now.since(at) >= SHUTDOWN_HOLD
-        {
-            self.consumed.insert(Button::Play);
-            return Some(Gesture::Shutdown);
-        }
         let down = self.pressed_at.get(&Button::VolumeDown).copied();
         let up = self.pressed_at.get(&Button::VolumeUp).copied();
         if let (Some(down), Some(up)) = (down, up) {
@@ -102,7 +92,7 @@ mod tests {
     const R: ButtonState = ButtonState::Released;
 
     #[test]
-    fn click_hold_and_long_hold() {
+    fn click_and_hold() {
         let mut t = ButtonTracker::default();
         assert_eq!(t.on_edge(Millis(0), Button::Play, P), None);
         assert_eq!(t.on_edge(Millis(200), Button::Play, R), Some(Gesture::PlayClick));
@@ -115,10 +105,8 @@ mod tests {
         assert_eq!(t.on_edge(Millis(6500), Button::Play, R), Some(Gesture::BluetoothPairing));
 
         t.on_edge(Millis(10_000), Button::Play, P);
-        assert_eq!(t.on_tick(Millis(19_999)), None);
-        assert_eq!(t.on_tick(Millis(20_000)), Some(Gesture::Shutdown));
-        assert_eq!(t.on_tick(Millis(21_000)), None, "fires once");
-        assert_eq!(t.on_edge(Millis(22_000), Button::Play, R), None, "release after shutdown is ignored");
+        assert_eq!(t.on_tick(Millis(30_000)), None, "no gesture fires while play is held");
+        assert_eq!(t.on_edge(Millis(30_000), Button::Play, R), Some(Gesture::BluetoothPairing));
     }
 
     #[test]

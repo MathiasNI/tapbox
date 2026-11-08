@@ -1,0 +1,30 @@
+# Power: the master switch cuts power with no warning, so the box must come back
+# from whatever it last saved. Positions are saved every 10 s while playing and
+# immediately on pause, lift and volume change.
+
+# Clean shutdown (low battery, `poweroff`): save right away.
+tap story-440
+wait 42s
+power off
+expect cmd pause
+expect cmd persist
+expect led shutting-down
+
+# Switch flipped off mid-play, then on again: at most 10 s of position is lost.
+power cut
+expect idle
+expect volume 40
+expect position story-440 42s     # saved by the clean shutdown above
+tap story-440
+expect cmd play
+wait 25s                         # saved at ~10 s and ~20 s into this play
+power cut
+expect position story-440 62s    # 42 + 20; the last 5 s are lost
+tap song-660
+expect cmd play
+
+# Settings changed just before the cut survive: they are saved immediately.
+click vol-down
+click vol-down
+power cut
+expect volume 30

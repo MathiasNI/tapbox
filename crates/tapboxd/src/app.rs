@@ -211,10 +211,6 @@ impl App {
                 self.outputs.say_name();
                 Ok(())
             }
-            Command::Shutdown => {
-                self.outputs.shutdown();
-                Ok(())
-            }
             Command::Persist => self.persist(),
         };
         if let Err(err) = result {
@@ -272,7 +268,6 @@ pub fn describe(command: &Command) -> String {
         Command::OpenBluetoothPairing(window) => format!("Bluetooth pairing open for {}s", window.as_secs()),
         Command::EnterWifiSetup => "Wi-Fi setup hotspot".into(),
         Command::SayName => "say the box name and address".into(),
-        Command::Shutdown => "shut down".into(),
         Command::Led(state) => format!("LED {}", describe_led(*state)),
         Command::Flash(flash) => format!("LED {}", describe_flash(*flash)),
         Command::Persist => "save state".into(),
@@ -294,7 +289,6 @@ pub fn command_name(command: &Command) -> &'static str {
         Command::OpenBluetoothPairing(_) => "open-bluetooth-pairing",
         Command::EnterWifiSetup => "enter-wifi-setup",
         Command::SayName => "say-name",
-        Command::Shutdown => "shutdown",
         Command::Led(_) => "led",
         Command::Flash(_) => "flash",
         Command::Persist => "persist",

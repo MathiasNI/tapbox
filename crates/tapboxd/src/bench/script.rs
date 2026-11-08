@@ -10,7 +10,8 @@
 //! wait <time>             let time pass, e.g. 500ms, 3s, 2m
 //! bluetooth|airplay start|stop
 //! battery low|ok
-//! power off               the system shuts down (bottom power button, empty battery)
+//! power off               clean shutdown (battery board's low-battery threshold, `poweroff`)
+//! power cut               master switch flipped off: power gone, no warning; boots again from saved state
 //! player end|fail         end or fail the current track now
 //! track-length <time>     length of simulated tracks loaded from now on
 //!
@@ -55,8 +56,10 @@ pub enum Step {
     External(ExternalSource, bool),
     /// Battery low (`true`) or ok.
     Battery(bool),
-    /// The system is powering off.
+    /// Clean shutdown.
     PowerOff,
+    /// Power cut and restored: a fresh boot from saved state.
+    PowerCut,
     /// End the current track now.
     PlayerEnd,
     /// Fail the current track now.
@@ -128,6 +131,7 @@ pub fn parse_line(line: &str) -> Result<Option<Step>> {
         ["battery", "low"] => Step::Battery(true),
         ["battery", "ok"] => Step::Battery(false),
         ["power", "off"] => Step::PowerOff,
+        ["power", "cut"] => Step::PowerCut,
         ["player", "end"] => Step::PlayerEnd,
         ["player", "fail"] => Step::PlayerFail,
         ["track-length", time] => Step::TrackLength(parse_duration(time)?),

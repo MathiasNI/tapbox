@@ -70,9 +70,9 @@ Rule: **last source to start wins.**
 
 ## Robustness
 
-- Read-only root with overlayfs, data on a separate writable partition (library, cache, settings).
+- Read-only root with overlayfs (**required**: the master switch cuts power without warning), data on a separate writable partition (library, cache, settings).
 - State written atomically (temp → fsync → rename); resume positions saved every ~10 s.
-- Power on/off is a momentary button on the bottom wired to the LiFePO4wered/Pi+, which boots the Pi, triggers a clean shutdown and only then cuts power; it does the same on low battery (GPIO14 shutdown detect). tapboxd sees shutdown as SIGTERM, pauses and saves state before exiting.
+- Power on/off is a latching master switch in the battery line. OFF is a hard cut; ON boots via the LiFePO4wered/Pi+ `AUTO_BOOT_VBAT` setting. Anything not yet saved is lost, so positions are saved every 10 s and settings immediately; the testbench's `power cut` checks the bound. On low battery the board still shuts the Pi down cleanly (GPIO14 shutdown detect); tapboxd sees that as SIGTERM, pauses and saves.
 - Card data is untrusted input: size limits, allowed schemes only, no local paths from cards, hashes verified after download. No panics on card data (`unwrap`/`expect`/`panic` denied outside tests).
 
 ## Testbench

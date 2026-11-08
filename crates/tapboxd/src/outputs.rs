@@ -1,5 +1,5 @@
 //! Everything the core can ask for besides audio: LED, Bluetooth, AirPlay,
-//! Wi-Fi setup, speech, shutdown. Simulated for now; hardware and system
+//! Wi-Fi setup, speech. Simulated for now; hardware and system
 //! integrations replace these one at a time.
 
 use std::time::Duration;
@@ -17,7 +17,6 @@ pub struct SimOutputs {
     airplay_muted: bool,
     pairing_open_for: Option<Duration>,
     wifi_setup: bool,
-    shutdown_requested: bool,
 }
 
 impl Default for SimOutputs {
@@ -30,7 +29,6 @@ impl Default for SimOutputs {
             airplay_muted: false,
             pairing_open_for: None,
             wifi_setup: false,
-            shutdown_requested: false,
         }
     }
 }
@@ -66,12 +64,6 @@ impl SimOutputs {
         self.airplay_muted
     }
 
-    /// Whether a shutdown was requested.
-    #[must_use]
-    pub fn shutdown_requested(&self) -> bool {
-        self.shutdown_requested
-    }
-
     pub(crate) fn set_led(&mut self, state: LedState) {
         self.led = state;
     }
@@ -98,10 +90,6 @@ impl SimOutputs {
 
     pub(crate) fn say_name(&mut self) {
         self.name_announcements += 1;
-    }
-
-    pub(crate) fn shutdown(&mut self) {
-        self.shutdown_requested = true;
     }
 }
 

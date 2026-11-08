@@ -332,10 +332,6 @@ impl Core {
                 out.push(Command::Flash(Flash::Acknowledge));
                 self.enter_wifi_setup(out);
             }
-            Gesture::Shutdown => {
-                self.power_off(out);
-                out.push(Command::Shutdown);
-            }
         }
     }
 

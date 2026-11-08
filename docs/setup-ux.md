@@ -32,19 +32,17 @@ Use [comitup](https://github.com/davesteele/comitup). If no known network is in 
 | Orange blinking | Wi-Fi setup mode |
 | Dim green | Idle, ready |
 | Red slow blink | Battery low |
-| White fading out | Shutting down |
+| White fading out | Shutting down (low battery) |
 
 ## 5. Gestures (no phone needed)
 
-Power: the button **under the box** turns it on and off. Hold it until the LED reacts. Off means fully off, with clean shutdown first; it charges while off.
+Power: the **switch on the back** turns it on and off. ON boots the box (white pulse); OFF cuts power at once, and the box remembers each card's place to within 10 seconds. It only charges with the switch ON.
 
 | Gesture | Action |
 |---|---|
 | Hold play 3 s | Open Bluetooth pairing for 2 minutes |
 | Hold vol − and vol + together 5 s | Wi-Fi setup mode |
-| Hold play 10 s | Safe shutdown (same as the power button) |
-| Hold the power button (bottom) | On / clean shutdown |
-| Hold the power button 10 s | Force power off (if the Pi hangs) |
+| Power switch (back) | On / off |
 
 ## 6. Admin cards
 
