@@ -10,6 +10,7 @@
 //! wait <time>             let time pass, e.g. 500ms, 3s, 2m
 //! bluetooth|airplay start|stop
 //! battery low|ok
+//! power off               the system shuts down (bottom power button, empty battery)
 //! player end|fail         end or fail the current track now
 //! track-length <time>     length of simulated tracks loaded from now on
 //!
@@ -54,6 +55,8 @@ pub enum Step {
     External(ExternalSource, bool),
     /// Battery low (`true`) or ok.
     Battery(bool),
+    /// The system is powering off.
+    PowerOff,
     /// End the current track now.
     PlayerEnd,
     /// Fail the current track now.
@@ -124,6 +127,7 @@ pub fn parse_line(line: &str) -> Result<Option<Step>> {
         ["airplay", state] => Step::External(ExternalSource::AirPlay, parse_start_stop(state)?),
         ["battery", "low"] => Step::Battery(true),
         ["battery", "ok"] => Step::Battery(false),
+        ["power", "off"] => Step::PowerOff,
         ["player", "end"] => Step::PlayerEnd,
         ["player", "fail"] => Step::PlayerFail,
         ["track-length", time] => Step::TrackLength(parse_duration(time)?),
@@ -178,6 +182,7 @@ fn parse_led(word: &str) -> Result<LedState> {
         "bt-pairing" => LedState::BluetoothPairing,
         "wifi-setup" => LedState::WifiSetup,
         "battery-low" => LedState::BatteryLow,
+        "shutting-down" => LedState::ShuttingDown,
         _ => bail!("unknown LED state `{word}`"),
     })
 }

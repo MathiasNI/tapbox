@@ -56,9 +56,10 @@ Same in both modes. One command per line, `#` starts a comment.
 | `wait <time>` | `500ms`, `3s`, `2m` |
 | `bluetooth start\|stop`, `airplay start\|stop` | Another source takes or leaves the speaker |
 | `battery low\|ok` | Battery board report |
+| `power off` | The system shuts down (bottom power button, empty battery): the daemon must save first |
 | `player end\|fail` | End or fail the current track now |
 | `track-length <time>` | Length of simulated tracks (default 5 min) |
-| `expect led <state>` | `idle`, `playing`, `airplay`, `bt-pairing`, `wifi-setup`, `battery-low` |
+| `expect led <state>` | `idle`, `playing`, `airplay`, `bt-pairing`, `wifi-setup`, `battery-low`, `shutting-down` |
 | `expect flash <kind>` | `card`, `error`, `ack`, during the last action |
 | `expect cmd <name>` | A command ran during the last action: `play`, `pause`, `resume`, `pause-bluetooth`, `mute-airplay`, `open-bluetooth-pairing`, `enter-wifi-setup`, `shutdown`, `persist`, … |
 | `expect playing\|paused <card>`, `expect idle` | Playback state |
@@ -104,4 +105,5 @@ cargo run -p tapboxd -- card decode '03 9b d2 1b …'
 | Audio | simulated clock, or mpv | mpv → PipeWire → MAX98357A |
 | Bluetooth / AirPlay | `bluetooth` / `airplay` commands | BlueZ over D-Bus, shairport-sync hooks |
 | Battery | `battery low\|ok` | LiFePO4wered daemon |
+| Power button | `power off` | LiFePO4wered/Pi+ button → shutdown → SIGTERM to tapboxd |
 | Shutdown, Wi-Fi setup, speech | recorded only | systemd, comitup, TTS |

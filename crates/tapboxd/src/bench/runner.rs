@@ -115,6 +115,7 @@ pub async fn apply_instant(app: &mut App, bench: &Bench, now: Millis, step: &Ste
         Step::External(source, true) => app.handle(now, Event::ExternalStarted(*source)).await,
         Step::External(source, false) => app.handle(now, Event::ExternalStopped(*source)).await,
         Step::Battery(low) => app.handle(now, if *low { Event::BatteryLow } else { Event::BatteryOk }).await,
+        Step::PowerOff => app.handle(now, Event::PowerOff).await,
         Step::PlayerEnd | Step::PlayerFail | Step::TrackLength(_) => {
             let Player::Sim(player) = app.player_mut() else {
                 bail!("`player` and `track-length` need the simulated player (not --audio mpv)");

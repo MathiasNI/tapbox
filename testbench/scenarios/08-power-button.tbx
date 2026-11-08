@@ -1,0 +1,10 @@
+# Bottom power button (LiFePO4wered/Pi+): holding it shuts the system down.
+# tapboxd sees that as SIGTERM, i.e. `power off`: it must save before power goes.
+tap story-440
+wait 42s
+power off
+expect cmd pause
+expect cmd persist
+expect not cmd shutdown          # already shutting down; don't ask again
+expect led shutting-down
+expect position story-440 42s

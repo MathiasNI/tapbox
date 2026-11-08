@@ -17,6 +17,7 @@ Parts chosen to work together: power budget, amp-to-speaker match, pin map and e
 | Play button | **Sanwa OBSF-30** | 1 | Snap-in for 2–3.9 mm panels (our wall is 2.4 mm), 2.8 mm spade terminals |
 | Volume buttons | **Sanwa OBSF-24** | 2 | Same family, 24 mm |
 | Status LED | **5 mm diffused RGB LED, common cathode** + 3 × 220 Ω resistors | 1 | Runs directly from 3.3 V GPIO (see LED note) |
+| Power button | **12 mm momentary push-button, flush metal, normally open, no LED** (M12 thread, ~20 mm body) | 1 | On the bottom. Wired to the battery board's external button pads: press and hold to boot or to shut down cleanly (see power note) |
 | NFC cards | **NTAG215 PVC cards**, white, printable | 10–25 | 504 bytes, the card-spec reference tag |
 | microSD | **32 GB high-endurance** (SanDisk High Endurance or Samsung PRO Endurance) | 1 | Survives constant writes and power cuts better |
 | USB-C | Short USB-C male → female **panel-mount** extension (screw holes 17 mm apart) | 1 | Brings the battery board's USB-C charge input to the back lid |
@@ -42,7 +43,7 @@ AliExpress item numbers and exact variants: `parts-aliexpress.md`.
 - **Power:** Pi Zero 2 W + amplifier peaks + PN532 together stay under the LiFePO4wered/Pi+'s 2 A continuous output. Power the amp from 5 V.
 - **Amp ↔ speaker:** a 4 Ω driver gets the MAX98357A's full 3.2 W; the W2-2243S handles 10 W, so there's headroom. Hearing protection comes from the software volume cap.
 - **Box:** ~0.9 L sealed volume is plenty for this driver (Vas 0.23 L). A little damping material inside smooths the response.
-- **Fit:** speaker 36 mm deep in a 70 mm deep interior; arcade buttons ~25 mm deep; wall 2.4 mm is inside Sanwa's 2–3.9 mm snap-in range. The battery board is 77.5 mm long and 21.5 mm from PCB top to battery bottom: check the lid stack against the speaker before printing.
+- **Fit:** speaker 36 mm deep in a 70 mm deep interior; arcade buttons ~25 mm deep; power button at (65, 38) on the bottom stands ~20 mm into the box, between the arcade buttons (front, to 27 mm deep) and the lid stack (back); wall 2.4 mm is inside Sanwa's 2–3.9 mm snap-in range. The battery board is 77.5 mm long and 21.5 mm from PCB top to battery bottom: check the lid stack against the speaker before printing.
 - **I²C:** PN532 (0x24) and LiFePO4wered/Pi+ (0x43) don't clash. Only the LiFePO4wered daemon talks to the battery board; the tapbox daemon reads battery state from it, not from the bus.
 - **GPIO:** I²S uses 18/19/21, I²C 2/3, buttons 5/27/13, LED 12/16/26, PN532 IRQ 4, battery board shutdown detect 14 (pin 8). No overlaps.
 - **Speaker mount:** the enclosure uses a square insert pattern (`speaker_screw_spacing`). Measure your driver's four flange holes and set the parameter (holes on a circle of diameter d → square side d / √2).
@@ -52,6 +53,7 @@ AliExpress item numbers and exact variants: `parts-aliexpress.md`.
 | From | To | Pin |
 |---|---|---|
 | LiFePO4wered/Pi+ | sits on the header (stackable): 5 V, GND, I²C, GPIO14 shutdown detect | 2, 4 / GND / 3, 5 / 8 |
+| Power button (bottom) | LiFePO4wered/Pi+ external button through-holes, in parallel with the on-board button; 2-pin plug so the lid comes off | — |
 | PN532 VCC / GND | 3.3 V / GND | 1 / 9 |
 | PN532 SDA / SCL | GPIO2 / GPIO3 (I²C) | 3 / 5 |
 | PN532 IRQ (optional, recommended) | GPIO4 | 7 |
@@ -72,6 +74,7 @@ Notes:
 - **LED PWM:** of GPIO12/16/26 only GPIO12 has hardware PWM. Mixed colours (orange, purple, dim green) need PWM on all three, so use the kernel's `pwm-gpio` software-PWM driver (Pi kernel 6.6.62+, included in Trixie) on all three pins, one overlay line per pin in `config.txt`. Check the exact overlay name and parameters in `/boot/firmware/overlays/README`.
 - **PN532 IRQ:** lets the daemon wait for a card instead of polling the bus, and makes I²C reads more reliable. If your module has no IRQ pin, the daemon falls back to polling.
 - **PN532 I²C speed:** the PN532 stretches the I²C clock, which the Pi's controller handles badly. Start with `dtparam=i2c_arm_baudrate=100000` (lower if reads fail) and test on the bench.
+- **Power on/off:** the bottom button is a *momentary* button on the battery board's own on/off input, not a switch in the battery line. Hold it to boot; hold it again and the board tells the Pi to shut down, waits for it, then cuts power. A latching switch that cuts the battery would pull power from a running Pi: SD-card corruption, lost resume positions, and no UPS. Off, the board only draws its standby current, so the box can sit on a shelf; a USB-C charger plugged in charges it without booting (keep `AUTO_BOOT` off in the LiFePO4wered config). Holding the button for 10 s forces power off if the Pi ever hangs. The press-and-hold delay is configurable with `lifepo4wered-cli`; the default is long enough that a kid bumping the bottom won't trigger it, and the feet keep it off the table.
 - **Battery board:** with the stackable header, the Dupont plugs go on the extended pins above it. Its installer enables I²C and the UART on GPIO14/15; leave pin 8 free.
 - Buttons use the Pi's internal pull-ups; debounce is done in the kernel (GPIO character device).
 - Use plugs (JST/Dupont/spade) everywhere so the lid with all electronics comes off without soldering.

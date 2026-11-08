@@ -265,6 +265,20 @@ fn hold_play_ten_seconds_shuts_down_after_saving() {
 }
 
 #[test]
+fn power_off_pauses_saves_and_shows_shutdown_led() {
+    let mut b = Bench::new();
+    b.tap(1, content("a"));
+    b.position(42);
+    let out = b.send(Event::PowerOff);
+    let pause = out.iter().position(|c| *c == Command::Pause).unwrap();
+    let persist = out.iter().position(|c| *c == Command::Persist).unwrap();
+    assert!(pause < persist);
+    assert!(has(&out, &Command::Led(LedState::ShuttingDown)));
+    assert!(!has(&out, &Command::Shutdown), "the system is already shutting down");
+    assert_eq!(b.core.persistent_state().positions_ms.get(&uid(1)), Some(&42_000));
+}
+
+#[test]
 fn hold_both_volume_buttons_enters_wifi_setup() {
     let mut b = Bench::new();
     b.press(Button::VolumeDown);

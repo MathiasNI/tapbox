@@ -119,6 +119,7 @@ pub struct Core {
     pairing_until: Option<Millis>,
     wifi_setup: bool,
     battery_low: bool,
+    powering_off: bool,
     sleep_at: Option<Millis>,
     led: LedState,
     started: bool,
@@ -145,6 +146,7 @@ impl Core {
             pairing_until: None,
             wifi_setup: false,
             battery_low: false,
+            powering_off: false,
             sleep_at: None,
             led: LedState::Booting,
             started: false,
@@ -233,6 +235,7 @@ impl Core {
             Event::ExternalStopped(source) => self.on_external_stopped(source, &mut out),
             Event::BatteryLow => self.battery_low = true,
             Event::BatteryOk => self.battery_low = false,
+            Event::PowerOff => self.power_off(&mut out),
         }
         self.finish(now, &mut out);
         out
@@ -330,11 +333,8 @@ impl Core {
                 self.enter_wifi_setup(out);
             }
             Gesture::Shutdown => {
-                self.pause(out);
-                out.push(Command::Persist);
+                self.power_off(out);
                 out.push(Command::Shutdown);
-                self.persist_now = false;
-                self.dirty = false;
             }
         }
     }
@@ -419,6 +419,15 @@ impl Core {
         }
     }
 
+    /// Pause and save right away: power is about to go.
+    fn power_off(&mut self, out: &mut Vec<Command>) {
+        self.powering_off = true;
+        self.pause(out);
+        out.push(Command::Persist);
+        self.persist_now = false;
+        self.dirty = false;
+    }
+
     fn set_volume(&mut self, volume: Percent, out: &mut Vec<Command>) {
         let volume = volume.min(self.max_volume);
         if volume != self.volume {
@@ -439,7 +448,9 @@ impl Core {
     }
 
     fn led_state(&self) -> LedState {
-        if self.wifi_setup {
+        if self.powering_off {
+            LedState::ShuttingDown
+        } else if self.wifi_setup {
             LedState::WifiSetup
         } else if self.pairing_until.is_some() {
             LedState::BluetoothPairing

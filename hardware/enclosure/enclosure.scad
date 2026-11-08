@@ -72,6 +72,14 @@ pi_hole_dx = 23;
 pi_hole_dz = 58;
 pi_hole_d = 2.7;      // M2.5 standoffs
 
+/* [Power button (bottom)] */
+// Momentary 12 mm flush metal push-button, wired to the LiFePO4wered/Pi+
+// external button pads. Clear of the arcade buttons (front) and the lid
+// electronics (back); the 4 mm feet keep it off the table.
+power_btn_d = 12.3;   // through hole for an M12 thread
+power_btn_x = 65;     // centred left-right
+power_btn_y = 38;     // from the front face
+
 /* [Feet] */
 foot_d = 10;
 foot_depth = 1;
@@ -189,6 +197,9 @@ module shell_cuts() {
     // notch in the ledge so the USB-C panel mount passes
     translate([W / 2 - usbc_w / 2 - 3, D - lid_t - flange_t - 1, usbc_cz - usbc_h / 2 - 3])
         cube([usbc_w + 6, flange_t + 2, usbc_h + 6]);
+
+    // power button through the bottom wall
+    translate([power_btn_x, power_btn_y, -1]) cylinder(d = power_btn_d, h = wall + 2);
 
     // feet recesses
     for (fx = foot_x, fy = foot_y)

@@ -163,6 +163,10 @@ pub enum Event {
     BatteryLow,
     /// The battery is charging or no longer low.
     BatteryOk,
+    /// The system is powering off: the bottom power button was held, the
+    /// battery ran empty, or someone ran `poweroff`. The daemon sees this as
+    /// SIGTERM from systemd and has a few seconds to save state.
+    PowerOff,
 }
 
 /// A one-shot LED flash on top of the current [`LedState`].
@@ -193,6 +197,8 @@ pub enum LedState {
     WifiSetup,
     /// Red slow blink.
     BatteryLow,
+    /// White fading out.
+    ShuttingDown,
 }
 
 /// Output of the core: something for the I/O layer to carry out.

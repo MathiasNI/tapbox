@@ -72,7 +72,7 @@ Rule: **last source to start wins.**
 
 - Read-only root with overlayfs, data on a separate writable partition (library, cache, settings).
 - State written atomically (temp → fsync → rename); resume positions saved every ~10 s.
-- The LiFePO4wered/Pi+ handles safe shutdown on low battery (GPIO14 shutdown detect).
+- Power on/off is a momentary button on the bottom wired to the LiFePO4wered/Pi+, which boots the Pi, triggers a clean shutdown and only then cuts power; it does the same on low battery (GPIO14 shutdown detect). tapboxd sees shutdown as SIGTERM, pauses and saves state before exiting.
 - Card data is untrusted input: size limits, allowed schemes only, no local paths from cards, hashes verified after download. No panics on card data (`unwrap`/`expect`/`panic` denied outside tests).
 
 ## Testbench
