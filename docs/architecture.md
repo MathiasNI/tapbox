@@ -73,7 +73,7 @@ Rule: **last source to start wins.**
 ## Robustness
 
 - Read-only root with overlayfs (**required**: the master switch cuts power without warning), data on a separate writable partition (library, cache, settings).
-- tapboxd writes almost nothing: only the parents' max volume, atomically (temp → fsync → rename), when it changes. Wi-Fi and Bluetooth pairings (NetworkManager, BlueZ) live on the writable data partition.
+- tapboxd writes only on purpose, never during playback: parent settings (`state.json`), card links and the box name (`box.json`), the library index, and uploads (streamed to a `.part` file, renamed when complete). JSON files are written atomically (temp → fsync → rename → fsync dir). Wi-Fi and Bluetooth pairings (NetworkManager, BlueZ) live on the writable data partition.
 - Power on/off is a latching master switch in the battery line. OFF is a hard cut; ON boots via the LiFePO4wered/Pi+ `AUTO_BOOT_VBAT` setting. Switching off is a fresh start by design: resume positions and volume live in memory only; the testbench's `power cut` checks this. On low battery the board still shuts the Pi down cleanly (GPIO14 shutdown detect); tapboxd sees that as SIGTERM and stops playing.
 - Card data is untrusted input: size limits, allowed schemes only, no local paths from cards, hashes verified after download. No panics on card data (`unwrap`/`expect`/`panic` denied outside tests).
 
