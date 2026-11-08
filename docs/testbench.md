@@ -17,7 +17,7 @@ Everything lives in [`testbench/`](../testbench):
 ```sh
 cargo run -p tapboxd -- sim            # simulated audio
 cargo run -p tapboxd -- sim --audio mpv  # real audio through mpv (install mpv first)
-cargo run -p tapboxd -- sim --fresh    # forget saved volume and positions
+cargo run -p tapboxd -- sim --fresh    # forget the saved max volume
 ```
 
 ```text
