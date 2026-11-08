@@ -1,0 +1,7 @@
+{
+  "description": "NDEF with only a vCard record. Nothing tapbox can play.",
+  "tlv_hex": "0323d20a16746578742f7663617264424547494e3a56434152440d0a454e443a5643415244fe",
+  "expected": {
+    "kind": "unrecognized"
+  }
+}

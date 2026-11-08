@@ -1,0 +1,21 @@
+{
+  "description": "Payload over 255 bytes: long NDEF record and three-byte TLV length.",
+  "tlv_hex": "03ff0170c21b0000014f6170706c69636174696f6e2f766e642e746170626f782b6a736f6e7b2276223a312c2274223a2245696e206c616e67657220546974656c206d697420556d6c617574656e3a20c386c398c38520c3a6c3b8c3a5222c2273223a5b226e693a2f2f2f7368612d3235363b5a6e75544a38774c4f725a50432d706a5f32465f476e3439434668556c6c393239514b674c727869384855222c2268747470733a2f2f6d656469612e6578616d706c652e6f72672f617564696f626f6f6b732f612d7261746865722d6c6f6e672d706174682f636861707465722d30312d696e74726f64756374696f6e2e6d7033222c2268747470733a2f2f6d6972726f722e6578616d706c652e6e65742f617564696f626f6f6b732f612d7261746865722d6c6f6e672d706174682f636861707465722d30312d696e74726f64756374696f6e2e6d7033222c2273706f746966793a73686f773a3461617779414239766d714e33755137466a52475479225d7dfe",
+  "expected": {
+    "kind": "card",
+    "origin": "tapbox",
+    "payload": {
+      "v": 1,
+      "t": "Ein langer Titel mit Umlauten: ÆØÅ æøå",
+      "s": [
+        "ni:///sha-256;ZnuTJ8wLOrZPC-pj_2F_Gn49CFhUll929QKgLrxi8HU",
+        "https://media.example.org/audiobooks/a-rather-long-path/chapter-01-introduction.mp3",
+        "https://mirror.example.net/audiobooks/a-rather-long-path/chapter-01-introduction.mp3",
+        "spotify:show:4aawyAB9vmqN3uQ7FjRGTy"
+      ]
+    }
+  },
+  "encoder": {
+    "landing_page": null
+  }
+}

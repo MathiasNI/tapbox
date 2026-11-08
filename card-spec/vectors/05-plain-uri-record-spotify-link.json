@@ -1,0 +1,14 @@
+{
+  "description": "Card written by an ordinary NFC app: only a URI record with an open.spotify.com link. Decoders convert it to a spotify: source.",
+  "tlv_hex": "0337d1013355046f70656e2e73706f746966792e636f6d2f616c62756d2f3461617779414239766d714e33755137466a524754793f73693d78fe",
+  "expected": {
+    "kind": "card",
+    "origin": "uri-record",
+    "payload": {
+      "v": 1,
+      "s": [
+        "spotify:album:4aawyAB9vmqN3uQ7FjRGTy"
+      ]
+    }
+  }
+}

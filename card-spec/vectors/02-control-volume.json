@@ -1,0 +1,15 @@
+{
+  "description": "Admin card setting the maximum volume to 60 %.",
+  "tlv_hex": "0336d21b186170706c69636174696f6e2f766e642e746170626f782b6a736f6e7b2276223a312c2263223a22766f6c2d6d61783a3630227dfe",
+  "expected": {
+    "kind": "card",
+    "origin": "tapbox",
+    "payload": {
+      "v": 1,
+      "c": "vol-max:60"
+    }
+  },
+  "encoder": {
+    "landing_page": null
+  }
+}

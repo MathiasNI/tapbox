@@ -1,0 +1,18 @@
+{
+  "description": "URI record first (what a phone opens), then the tapbox record with a Spotify source.",
+  "tlv_hex": "038491011a55026578616d706c652e6f72672f63617264732f62656474696d65521b486170706c69636174696f6e2f766e642e746170626f782b6a736f6e7b2276223a312c2274223a2242656474696d6520736f6e6773222c2273223a5b2273706f746966793a616c62756d3a3461617779414239766d714e33755137466a52475479225d7dfe",
+  "expected": {
+    "kind": "card",
+    "origin": "tapbox",
+    "payload": {
+      "v": 1,
+      "t": "Bedtime songs",
+      "s": [
+        "spotify:album:4aawyAB9vmqN3uQ7FjRGTy"
+      ]
+    }
+  },
+  "encoder": {
+    "landing_page": "https://www.example.org/cards/bedtime"
+  }
+}

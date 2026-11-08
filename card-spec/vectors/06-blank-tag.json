@@ -1,0 +1,7 @@
+{
+  "description": "Factory-fresh tag: empty NDEF TLV. Decoders fall back to the UID mapping.",
+  "tlv_hex": "0300fe00000000000000000000000000",
+  "expected": {
+    "kind": "empty"
+  }
+}

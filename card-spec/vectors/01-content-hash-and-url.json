@@ -1,0 +1,19 @@
+{
+  "description": "Content card with a SHA-256 source and an HTTPS fallback. The hash is of an empty file, for illustration only.",
+  "tlv_hex": "039bd21b7d6170706c69636174696f6e2f766e642e746170626f782b6a736f6e7b2276223a312c2274223a224578616d706c652073746f7279222c2273223a5b226e693a2f2f2f7368612d3235363b3437444551706a38484253612d5f54496d572d354a4365755165526b6d354e4d704a575a47336853754655222c2268747470733a2f2f6578616d706c652e6f72672f73746f72792e6d7033225d7dfe",
+  "expected": {
+    "kind": "card",
+    "origin": "tapbox",
+    "payload": {
+      "v": 1,
+      "t": "Example story",
+      "s": [
+        "ni:///sha-256;47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU",
+        "https://example.org/story.mp3"
+      ]
+    }
+  },
+  "encoder": {
+    "landing_page": null
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "description": "A card pointing at a local file. Decoders must reject it.",
+  "tlv_hex": "0340d21b226170706c69636174696f6e2f766e642e746170626f782b6a736f6e7b2276223a312c2273223a5b2266696c653a2f2f2f6574632f706173737764225d7dfe",
+  "expected": {
+    "kind": "error"
+  }
+}

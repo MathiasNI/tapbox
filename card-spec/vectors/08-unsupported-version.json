@@ -1,0 +1,7 @@
+{
+  "description": "Tapbox record from a future major version. Decoders must reject it.",
+  "tlv_hex": "0347d21b296170706c69636174696f6e2f766e642e746170626f782b6a736f6e7b2276223a322c2273223a5b2268747470733a2f2f6578616d706c652e6f72672f612e6d7033225d7dfe",
+  "expected": {
+    "kind": "error"
+  }
+}
