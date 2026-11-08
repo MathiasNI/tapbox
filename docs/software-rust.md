@@ -34,7 +34,7 @@ PipeWire runs as a user service, so the audio stack runs as a dedicated `tapbox`
 - **Watchdog ping from the main event loop**, not a separate timer task, so a deadlocked core stops the pings and gets restarted.
 - **Hardware watchdog** for kernel hangs: `RuntimeWatchdogSec=15s` in `/etc/systemd/system.conf`.
 - `DynamicUser=` doesn't fit (needs fixed groups `gpio`, `i2c`, a runtime dir for PipeWire). Run `systemd-analyze security --user tapboxd` and tighten from there.
-- **Power-loss safety:** read-only root + overlayfs; state written atomically (temp → fsync → rename → fsync dir); resume positions saved every ~10 s, not on every tick.
+- **Power-loss safety:** the master switch cuts power without warning. Read-only root + overlayfs; the only state tapboxd writes is the parents' max volume, atomically (temp → fsync → rename → fsync dir) and only when it changes. Playback state lives in memory: switching off is a fresh start. Wi-Fi and Bluetooth state (NetworkManager, BlueZ) goes on the writable data partition.
 
 ## Architecture: functional core, imperative shell
 

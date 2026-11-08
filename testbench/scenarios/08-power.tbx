@@ -1,30 +1,42 @@
-# Power: the master switch cuts power with no warning, so the box must come back
-# from whatever it last saved. Positions are saved every 10 s while playing and
-# immediately on pause, lift and volume change.
+# Power: the master switch cuts power with no warning. That is fine: switching
+# off is a fresh start. Only the parents' max volume survives (hearing
+# protection); Wi-Fi and Bluetooth pairings are kept by the system, not tapboxd.
 
-# Clean shutdown (low battery, `poweroff`): save right away.
+# Clean shutdown (low battery, `poweroff`): stop playing, show it on the LED.
 tap story-440
 wait 42s
 power off
 expect cmd pause
-expect cmd persist
+expect not cmd persist           # nothing about playback is written
 expect led shutting-down
 
-# Switch flipped off mid-play, then on again: at most 10 s of position is lost.
+# Within one session, lifting and re-tapping resumes.
+power cut
+tap story-440
+wait 30s
+lift
+tap story-440
+expect cmd resume
+
+# After a power cut: fresh start, default volume, from the beginning.
+click vol-down
+click vol-down
+expect volume 30
 power cut
 expect idle
+expect led idle
 expect volume 40
-expect position story-440 42s     # saved by the clean shutdown above
 tap story-440
 expect cmd play
-wait 25s                         # saved at ~10 s and ~20 s into this play
-power cut
-expect position story-440 62s    # 42 + 20; the last 5 s are lost
-tap song-660
-expect cmd play
+expect not cmd resume
+lift
 
-# Settings changed just before the cut survive: they are saved immediately.
-click vol-down
-click vol-down
+# Max volume set by a parent's card survives.
+tap admin-vol-max-50
+expect cmd persist
+lift
 power cut
-expect volume 30
+expect max-volume 50
+click vol-up
+click vol-up
+expect volume 50

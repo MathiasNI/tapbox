@@ -56,8 +56,8 @@ Same in both modes. One command per line, `#` starts a comment.
 | `wait <time>` | `500ms`, `3s`, `2m` |
 | `bluetooth start\|stop`, `airplay start\|stop` | Another source takes or leaves the speaker |
 | `battery low\|ok` | Battery board report |
-| `power off` | Clean shutdown (low battery, `poweroff`): the daemon must save first |
-| `power cut` | Master switch OFF then ON: power gone with no warning, then a fresh boot from whatever was saved |
+| `power off` | Clean shutdown (low battery, `poweroff`) |
+| `power cut` | Master switch OFF then ON: a fresh boot. Only the max volume survives |
 | `player end\|fail` | End or fail the current track now |
 | `track-length <time>` | Length of simulated tracks (default 5 min) |
 | `expect led <state>` | `idle`, `playing`, `airplay`, `bt-pairing`, `wifi-setup`, `battery-low`, `shutting-down` |
@@ -65,7 +65,7 @@ Same in both modes. One command per line, `#` starts a comment.
 | `expect cmd <name>` | A command ran during the last action: `play`, `pause`, `resume`, `pause-bluetooth`, `mute-airplay`, `open-bluetooth-pairing`, `enter-wifi-setup`, `persist`, … |
 | `expect playing\|paused <card>`, `expect idle` | Playback state |
 | `expect volume <n>`, `expect max-volume <n>` | Volume |
-| `expect position <card> <time>` | Saved resume position, ±1 s |
+| `expect position <card> <time>` | Resume position (in memory, this session), ±1 s |
 | `expect loaded <text>` | The player has a file/URL containing `<text>` |
 | `expect airplay-muted\|airplay-unmuted` | AirPlay mute state |
 | `expect not …` | Negate `cmd` or `flash` (or anything else) |

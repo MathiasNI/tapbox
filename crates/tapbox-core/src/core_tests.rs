@@ -113,7 +113,7 @@ fn lift_pauses_and_same_card_resumes() {
     b.position(42);
     let out = b.lift();
     assert!(has(&out, &Command::Pause));
-    assert!(has(&out, &Command::Persist), "pausing saves the position");
+    assert!(!has(&out, &Command::Persist), "playback state is never written to disk");
     let out = b.tap(1, content("a"));
     assert!(has(&out, &Command::Resume));
     assert_eq!(play_start(&out), None, "no reload when resuming");
@@ -252,16 +252,13 @@ fn hold_play_three_seconds_opens_pairing_for_two_minutes() {
 }
 
 #[test]
-fn power_off_pauses_saves_and_shows_shutdown_led() {
+fn power_off_pauses_and_shows_shutdown_led() {
     let mut b = Bench::new();
     b.tap(1, content("a"));
-    b.position(42);
     let out = b.send(Event::PowerOff);
-    let pause = out.iter().position(|c| *c == Command::Pause).unwrap();
-    let persist = out.iter().position(|c| *c == Command::Persist).unwrap();
-    assert!(pause < persist);
+    assert!(has(&out, &Command::Pause));
     assert!(has(&out, &Command::Led(LedState::ShuttingDown)));
-    assert_eq!(b.core.persistent_state().positions_ms.get(&uid(1)), Some(&42_000));
+    assert!(!has(&out, &Command::Persist), "nothing about playback needs saving");
 }
 
 #[test]
@@ -285,31 +282,36 @@ fn sleep_card_pauses_after_timeout() {
 }
 
 #[test]
-fn positions_are_saved_periodically_not_on_every_report() {
+fn playback_never_writes_to_disk() {
     let mut b = Bench::new();
     b.tap(1, content("a"));
-    let mut persists = 0;
-    for second in 1..=30 {
+    let mut out = Vec::new();
+    for second in 1..=60 {
         b.now = Millis(b.now.0 + 1000);
-        let mut out = b.send(Event::Player(PlayerEvent::Position(Duration::from_secs(second))));
+        out.extend(b.send(Event::Player(PlayerEvent::Position(Duration::from_secs(second)))));
         out.extend(b.send(Event::Tick));
-        persists += out.iter().filter(|c| **c == Command::Persist).count();
     }
-    assert_eq!(persists, 3, "every 10 s over 30 s");
+    out.extend(b.lift());
+    out.extend(b.click(Button::VolumeDown));
+    out.extend(b.send(Event::PowerOff));
+    assert!(!has(&out, &Command::Persist));
 }
 
 #[test]
-fn state_survives_restart() {
+fn only_max_volume_survives_restart() {
     let mut b = Bench::new();
     b.tap(1, content("a"));
     b.position(42);
     b.click(Button::VolumeDown);
+    b.tap(9, control("vol-max:50"));
     let saved = b.core.persistent_state();
+    assert_eq!(saved, PersistentState { max_volume: Some(Percent::saturating(50)) });
 
     let mut core = Core::new(Config::default(), BTreeMap::new()).with_state(saved);
     let out = core.handle(Millis(0), Event::CardPresent { uid: uid(1), read: content("a") });
-    assert_eq!(play_start(&out), Some(Duration::from_secs(42)));
-    assert!(has(&out, &Command::SetVolume(Percent::saturating(35))));
+    assert_eq!(play_start(&out), Some(Duration::ZERO), "fresh start after power off");
+    assert!(has(&out, &Command::SetVolume(Percent::saturating(40))), "volume back to the default");
+    assert_eq!(core.max_volume(), Percent::saturating(50));
 }
 
 #[test]

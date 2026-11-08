@@ -1,6 +1,8 @@
-//! Power-loss-safe storage of [`PersistentState`]: write to a temp file,
-//! fsync, rename over the old file, fsync the directory. The master switch
-//! cuts power without warning, so this must hold at any instant.
+//! Power-loss-safe storage of [`PersistentState`] (today: the parents' max
+//! volume): write to a temp file, fsync, rename over the old file, fsync the
+//! directory. The master switch cuts power without warning, so a write must be
+//! safe to interrupt at any instant. Writes are rare: only when a vol-max card
+//! changes the limit.
 //!
 //! A memory-backed store exists for the testbench, so scenarios can cut
 //! power and boot again from whatever was last saved.
@@ -44,7 +46,7 @@ impl Store {
     pub fn load(&self) -> PersistentState {
         match &self.backend {
             Backend::File(path) => load_file(path),
-            Backend::Memory(slot) => slot.lock().ok().and_then(|slot| slot.clone()).unwrap_or_default(),
+            Backend::Memory(slot) => slot.lock().ok().and_then(|slot| *slot).unwrap_or_default(),
         }
     }
 
@@ -52,11 +54,11 @@ impl Store {
     ///
     /// # Errors
     /// On any filesystem error; the previous state file is left intact.
-    pub fn save(&self, state: &PersistentState) -> Result<()> {
+    pub fn save(&self, state: PersistentState) -> Result<()> {
         match &self.backend {
             Backend::File(path) => save_file(path, state),
             Backend::Memory(slot) => {
-                *slot.lock().map_err(|_| anyhow!("state lock poisoned"))? = Some(state.clone());
+                *slot.lock().map_err(|_| anyhow!("state lock poisoned"))? = Some(state);
                 Ok(())
             }
         }
@@ -77,11 +79,11 @@ fn load_file(path: &PathBuf) -> PersistentState {
     }
 }
 
-fn save_file(path: &PathBuf, state: &PersistentState) -> Result<()> {
+fn save_file(path: &PathBuf, state: PersistentState) -> Result<()> {
     let dir = path.parent().context("state file has no parent directory")?;
     fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
     let tmp = path.with_extension("json.tmp");
-    let json = serde_json::to_vec_pretty(state)?;
+    let json = serde_json::to_vec_pretty(&state)?;
     {
         let mut file = File::create(&tmp).with_context(|| format!("creating {}", tmp.display()))?;
         file.write_all(&json)?;
@@ -103,8 +105,8 @@ mod tests {
         let store = Store::new(dir.path().join("sub/state.json"));
         assert_eq!(store.load(), PersistentState::default());
 
-        let state = PersistentState { volume: Some(Percent::saturating(33)), ..PersistentState::default() };
-        store.save(&state).unwrap();
+        let state = PersistentState { max_volume: Some(Percent::saturating(33)) };
+        store.save(state).unwrap();
         assert_eq!(store.load(), state);
 
         fs::write(dir.path().join("sub/state.json"), b"{not json").unwrap();
@@ -116,8 +118,8 @@ mod tests {
         // Power cut between writing the temp file and the rename.
         let dir = tempfile::tempdir().unwrap();
         let store = Store::new(dir.path().join("state.json"));
-        let state = PersistentState { volume: Some(Percent::saturating(20)), ..PersistentState::default() };
-        store.save(&state).unwrap();
+        let state = PersistentState { max_volume: Some(Percent::saturating(20)) };
+        store.save(state).unwrap();
         fs::write(dir.path().join("state.json.tmp"), b"{half wri").unwrap();
         assert_eq!(store.load(), state);
     }
@@ -125,8 +127,8 @@ mod tests {
     #[test]
     fn memory_store_is_shared_between_clones() {
         let store = Store::memory();
-        let state = PersistentState { volume: Some(Percent::saturating(50)), ..PersistentState::default() };
-        store.clone().save(&state).unwrap();
+        let state = PersistentState { max_volume: Some(Percent::saturating(50)) };
+        store.clone().save(state).unwrap();
         assert_eq!(store.load(), state);
     }
 }

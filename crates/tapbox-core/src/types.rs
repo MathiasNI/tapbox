@@ -165,8 +165,8 @@ pub enum Event {
     BatteryOk,
     /// The system is shutting down cleanly: the battery board reached its
     /// low-battery threshold, or someone ran `poweroff`. The daemon sees this
-    /// as SIGTERM from systemd and has a few seconds to save state. (The
-    /// master switch cuts power without warning; nothing is sent for that.)
+    /// as SIGTERM from systemd. (The master switch cuts power without
+    /// warning; nothing is sent for that, and nothing needs to be.)
     PowerOff,
 }
 
@@ -236,6 +236,6 @@ pub enum Command {
     Led(LedState),
     /// Flash the LED once.
     Flash(Flash),
-    /// Save [`crate::PersistentState`] now.
+    /// Save [`crate::PersistentState`] now (only after a max-volume change).
     Persist,
 }

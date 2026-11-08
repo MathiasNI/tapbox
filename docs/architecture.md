@@ -32,7 +32,7 @@ The daemon is Rust (`tapboxd`), split into small crates. Research and crate choi
 | Buttons, LED | Debounced button events; RGB status light | `gpiocdev` (kernel debounce); sysfs PWM via `pwm-gpio` overlay |
 | Battery | Battery level, low-battery and shutdown events | LiFePO4wered/Pi+ daemon (`lifepo4wered-cli`) |
 | Resolver | Turn sources into something playable: local library by hash → cache → download (verify hash) → plugin | `reqwest` (rustls), `sha2` |
-| Player | Play/pause/volume, resume position per card | mpv as supervised child, typed JSON-IPC client |
+| Player | Play/pause/volume, resume position per card (in memory, per session) | mpv as supervised child, typed JSON-IPC client |
 | Arbiter | Decide which source owns the speaker (rules in the core) | BlueZ over D-Bus, shairport-sync hooks |
 | Bluetooth | Pairing window, auto-accept agent, transport state | BlueZ over D-Bus (`zbus`) |
 | AirPlay | Receiver | shairport-sync + NQPTP |
@@ -71,8 +71,8 @@ Rule: **last source to start wins.**
 ## Robustness
 
 - Read-only root with overlayfs (**required**: the master switch cuts power without warning), data on a separate writable partition (library, cache, settings).
-- State written atomically (temp → fsync → rename); resume positions saved every ~10 s.
-- Power on/off is a latching master switch in the battery line. OFF is a hard cut; ON boots via the LiFePO4wered/Pi+ `AUTO_BOOT_VBAT` setting. Anything not yet saved is lost, so positions are saved every 10 s and settings immediately; the testbench's `power cut` checks the bound. On low battery the board still shuts the Pi down cleanly (GPIO14 shutdown detect); tapboxd sees that as SIGTERM, pauses and saves.
+- tapboxd writes almost nothing: only the parents' max volume, atomically (temp → fsync → rename), when it changes. Wi-Fi and Bluetooth pairings (NetworkManager, BlueZ) live on the writable data partition.
+- Power on/off is a latching master switch in the battery line. OFF is a hard cut; ON boots via the LiFePO4wered/Pi+ `AUTO_BOOT_VBAT` setting. Switching off is a fresh start by design: resume positions and volume live in memory only; the testbench's `power cut` checks this. On low battery the board still shuts the Pi down cleanly (GPIO14 shutdown detect); tapboxd sees that as SIGTERM and stops playing.
 - Card data is untrusted input: size limits, allowed schemes only, no local paths from cards, hashes verified after download. No panics on card data (`unwrap`/`expect`/`panic` denied outside tests).
 
 ## Testbench

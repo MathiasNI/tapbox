@@ -247,7 +247,7 @@ impl App {
 
     fn persist(&self) -> anyhow::Result<()> {
         match &self.store {
-            Some(store) => store.save(&self.core.persistent_state()),
+            Some(store) => store.save(self.core.persistent_state()),
             None => Ok(()),
         }
     }

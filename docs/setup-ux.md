@@ -36,7 +36,7 @@ Use [comitup](https://github.com/davesteele/comitup). If no known network is in 
 
 ## 5. Gestures (no phone needed)
 
-Power: the **switch on the back** turns it on and off. ON boots the box (white pulse); OFF cuts power at once, and the box remembers each card's place to within 10 seconds. It only charges with the switch ON.
+Power: the **switch on the back** turns it on and off. ON boots the box (white pulse); OFF cuts power at once. Switching off is a fresh start: next time, put a card on and it plays from the beginning at the default volume (a parent's max-volume card is remembered). Wi-Fi and Bluetooth pairings are kept. It only charges with the switch ON.
 
 | Gesture | Action |
 |---|---|

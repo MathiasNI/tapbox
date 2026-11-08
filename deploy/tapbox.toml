@@ -11,7 +11,6 @@ volume-step = 5
 on-card-removed = "pause"
 control-cards = true
 pairing-window = 120     # seconds
-persist-interval = 10    # seconds
 
 # BCM GPIO numbers, see docs/hardware.md. These are the defaults.
 [hardware]

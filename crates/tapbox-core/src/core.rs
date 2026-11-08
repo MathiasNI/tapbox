@@ -37,9 +37,6 @@ pub struct Config {
     /// How long Bluetooth pairing stays open.
     #[serde(with = "seconds")]
     pub pairing_window: Duration,
-    /// How often resume positions are saved while playing.
-    #[serde(with = "seconds")]
-    pub persist_interval: Duration,
 }
 
 impl Default for Config {
@@ -51,7 +48,6 @@ impl Default for Config {
             on_card_removed: OnCardRemoved::Pause,
             control_cards: true,
             pairing_window: Duration::from_secs(120),
-            persist_interval: Duration::from_secs(10),
         }
     }
 }
@@ -70,16 +66,18 @@ mod seconds {
     }
 }
 
-/// State that survives a reboot. The daemon writes it when the core emits [`Command::Persist`].
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// State that survives a reboot: only the parents' maximum volume. Playback
+/// state (resume positions, current volume) deliberately does not: switching
+/// the box off is a fresh start. Wi-Fi and Bluetooth pairings are kept by
+/// NetworkManager and BlueZ, not here.
+///
+/// The daemon writes it when the core emits [`Command::Persist`], which only
+/// happens when a vol-max control card changes the limit.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PersistentState {
-    /// Last volume.
-    pub volume: Option<Percent>,
     /// Maximum volume set by a control card (overrides the config).
     pub max_volume: Option<Percent>,
-    /// Resume position per card, in milliseconds.
-    pub positions_ms: BTreeMap<Uid, u64>,
 }
 
 /// What the player is doing, as far as the core knows. For status displays and tests.
@@ -123,9 +121,7 @@ pub struct Core {
     sleep_at: Option<Millis>,
     led: LedState,
     started: bool,
-    dirty: bool,
     persist_now: bool,
-    last_persist: Millis,
 }
 
 impl Core {
@@ -150,9 +146,7 @@ impl Core {
             sleep_at: None,
             led: LedState::Booting,
             started: false,
-            dirty: false,
             persist_now: false,
-            last_persist: Millis(0),
         }
     }
 
@@ -161,26 +155,15 @@ impl Core {
     pub fn with_state(mut self, state: PersistentState) -> Self {
         if let Some(max) = state.max_volume {
             self.max_volume = max;
+            self.volume = self.volume.min(max);
         }
-        if let Some(volume) = state.volume {
-            self.volume = volume.min(self.max_volume);
-        }
-        self.positions = state.positions_ms.into_iter().map(|(uid, ms)| (uid, Duration::from_millis(ms))).collect();
         self
     }
 
     /// Snapshot of what should survive a reboot.
     #[must_use]
     pub fn persistent_state(&self) -> PersistentState {
-        PersistentState {
-            volume: Some(self.volume),
-            max_volume: (self.max_volume != self.config.max_volume).then_some(self.max_volume),
-            positions_ms: self
-                .positions
-                .iter()
-                .map(|(uid, position)| (uid.clone(), u64::try_from(position.as_millis()).unwrap_or(u64::MAX)))
-                .collect(),
-        }
+        PersistentState { max_volume: (self.max_volume != self.config.max_volume).then_some(self.max_volume) }
     }
 
     /// Current playback state.
@@ -222,7 +205,6 @@ impl Core {
         let mut out = Vec::new();
         if !self.started {
             self.started = true;
-            self.last_persist = now;
             out.push(Command::SetVolume(self.volume));
         }
         match event {
@@ -237,7 +219,7 @@ impl Core {
             Event::BatteryOk => self.battery_low = false,
             Event::PowerOff => self.power_off(&mut out),
         }
-        self.finish(now, &mut out);
+        self.finish(&mut out);
         out
     }
 
@@ -361,12 +343,10 @@ impl Core {
         match event {
             PlayerEvent::Position(position) => {
                 self.positions.insert(loaded, position);
-                self.dirty = true;
             }
             PlayerEvent::Ended => {
                 self.positions.remove(&loaded);
                 self.state = State::Idle;
-                self.persist_now = true;
             }
             PlayerEvent::Failed => {
                 out.push(Command::Flash(Flash::Error));
@@ -411,24 +391,19 @@ impl Core {
         if let State::Playing { uid } = &self.state {
             self.state = State::Paused { uid: uid.clone() };
             out.push(Command::Pause);
-            self.persist_now = true;
         }
     }
 
-    /// Pause and save right away: power is about to go.
+    /// Clean shutdown in progress: stop playing and show it on the LED.
     fn power_off(&mut self, out: &mut Vec<Command>) {
         self.powering_off = true;
         self.pause(out);
-        out.push(Command::Persist);
-        self.persist_now = false;
-        self.dirty = false;
     }
 
     fn set_volume(&mut self, volume: Percent, out: &mut Vec<Command>) {
         let volume = volume.min(self.max_volume);
         if volume != self.volume {
             self.volume = volume;
-            self.persist_now = true;
             out.push(Command::SetVolume(volume));
         }
     }
@@ -461,18 +436,15 @@ impl Core {
         }
     }
 
-    fn finish(&mut self, now: Millis, out: &mut Vec<Command>) {
+    fn finish(&mut self, out: &mut Vec<Command>) {
         let led = self.led_state();
         if led != self.led {
             self.led = led;
             out.push(Command::Led(led));
         }
-        let periodic = self.dirty && now.since(self.last_persist) >= self.config.persist_interval;
-        if self.persist_now || periodic {
+        if self.persist_now {
             out.push(Command::Persist);
             self.persist_now = false;
-            self.dirty = false;
-            self.last_persist = now;
         }
     }
 }
