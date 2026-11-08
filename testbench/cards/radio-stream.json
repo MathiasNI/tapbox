@@ -1,0 +1,5 @@
+{
+  "uid": "04a1000003a0b0",
+  "description": "URL only (no hash): streamed, not cached",
+  "card": { "v": 1, "t": "Internet radio", "s": ["https://example.org/radio.mp3"] }
+}

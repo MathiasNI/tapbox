@@ -1,0 +1,21 @@
+# Track end, low battery, safe shutdown.
+track-length 10s
+tap song-660
+wait 11s
+expect idle                      # played to the end
+lift
+tap song-660
+expect cmd play                  # reloaded from the start
+expect not cmd resume
+track-length 5m                  # long tracks again for the rest
+
+battery low
+expect led battery-low
+battery ok
+expect led playing
+
+hold play 10s                    # long hold: save and shut down
+expect cmd pause
+expect cmd persist
+expect cmd shutdown
+expect not cmd open-bluetooth-pairing

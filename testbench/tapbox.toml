@@ -1,0 +1,14 @@
+# Testbench config: a normal tapboxd config, with paths relative to this file.
+data-dir = "state"          # state.json, download cache, mpv socket (git-ignored)
+library-dir = "library"     # audio found by content hash
+
+[core]
+initial-volume = 40
+max-volume = 70
+volume-step = 5
+on-card-removed = "pause"   # or "keep-playing"
+control-cards = true
+
+# Blank cards (no NDEF data) are looked up by UID.
+[uid-map]
+"04b0000001a0b0" = ["ni:///sha-256;Ld6m0UrrSZmWwrPE8R5bug2GZV77Mlw5DZbYhaUdiv0"]

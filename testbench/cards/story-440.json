@@ -1,0 +1,6 @@
+{
+  "uid": "04a1000001a0b0",
+  "description": "Hash + URL; the hash is in the library, so it plays offline",
+  "phone-uri": "https://example.org/about/tone-440",
+  "card": { "v": 1, "t": "Tone story (440 Hz)", "s": ["ni:///sha-256;haetF0OJUF3d-NJwVlGfGbRiAknOn_HWG4zdyVzOO6o", "https://example.org/tone-440.wav"] }
+}

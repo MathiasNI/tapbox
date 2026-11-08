@@ -1,0 +1,25 @@
+# systemd *user* unit for the `tapbox` user (lingering enabled), so the daemon
+# shares a session with PipeWire. Install to /usr/lib/systemd/user/ and run:
+#   sudo loginctl enable-linger tapbox
+#   systemctl --user enable --now tapboxd     (as tapbox)
+# Until the hardware drivers land, `tapboxd run` exits with a message;
+# use `tapboxd sim` on a laptop instead.
+[Unit]
+Description=tapbox daemon
+After=pipewire.service wireplumber.service
+Wants=pipewire.service wireplumber.service
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/tapboxd run --config /etc/tapbox/tapbox.toml
+Restart=always
+RestartSec=2s
+WatchdogSec=10s
+TimeoutStopSec=10s
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/tapbox
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

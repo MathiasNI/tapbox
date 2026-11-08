@@ -1,0 +1,5 @@
+{
+  "uid": "04d0000001a0b0",
+  "description": "Control card: open Bluetooth pairing",
+  "card": { "v": 1, "t": "Bluetooth pairing", "c": "bt-pair" }
+}

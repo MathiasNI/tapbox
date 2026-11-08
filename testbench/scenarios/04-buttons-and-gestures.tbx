@@ -1,0 +1,36 @@
+# Volume, play/pause, and the hold gestures from setup-ux.md.
+click vol-up
+expect volume 45
+click vol-up
+click vol-up
+click vol-up
+click vol-up
+click vol-up
+click vol-up
+expect volume 70                 # capped at max-volume
+click vol-down
+expect volume 65
+
+tap song-660
+click play
+expect paused song-660
+click play
+expect playing song-660
+
+hold play 2s                     # between click and pairing: nothing
+expect not cmd open-bluetooth-pairing
+expect playing song-660
+
+hold play 3s
+expect cmd open-bluetooth-pairing
+expect led bt-pairing
+wait 2m
+expect led playing               # pairing window closed
+
+press vol-down
+press vol-up
+wait 5s
+expect cmd enter-wifi-setup
+expect led wifi-setup
+release vol-down
+release vol-up

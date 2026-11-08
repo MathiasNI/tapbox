@@ -1,0 +1,5 @@
+{
+  "uid": "04e0000001a0b0",
+  "description": "Written for spec v2: must be rejected",
+  "card": { "v": 2, "s": ["https://example.org/a.mp3"] }
+}

@@ -1,0 +1,5 @@
+{
+  "uid": "04d0000002a0b0",
+  "description": "Control card: max volume 50 %",
+  "card": { "v": 1, "t": "Max volume 50", "c": "vol-max:50" }
+}

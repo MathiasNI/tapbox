@@ -1,0 +1,22 @@
+# Last source to start wins.
+tap story-440
+bluetooth start                  # phone starts streaming: card pauses
+expect cmd pause
+expect paused story-440
+
+lift
+tap story-440                    # card back: Bluetooth sender is paused, card resumes
+expect cmd pause-bluetooth
+expect cmd resume
+bluetooth stop
+
+airplay start
+expect paused story-440
+expect led airplay
+lift
+tap story-440                    # AirPlay can't be paused remotely: mute it locally
+expect cmd mute-airplay
+expect airplay-muted
+expect led playing
+airplay stop
+expect airplay-unmuted
