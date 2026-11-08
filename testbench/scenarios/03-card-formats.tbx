@@ -1,0 +1,32 @@
+# Cards written by phones, blank cards, and cards the box must reject.
+tap phone-written                # plain URI record → streamed
+expect playing phone-written
+expect loaded podcast.mp3
+lift
+
+tap radio-stream                 # tapbox card, URL without hash → streamed
+expect loaded https://example.org/radio.mp3
+lift
+
+tap blank-mapped                 # no NDEF: UID looked up in tapbox.toml
+expect flash card
+expect loaded tone-660.wav
+lift
+
+tap blank-unknown
+expect flash error
+expect not cmd play
+lift
+
+tap future-version               # v2 card on a v1 box
+expect flash error
+lift
+
+tap broken                       # malformed TLV
+expect flash error
+lift
+
+tap spotify-link                 # recognised, but no Spotify plugin yet → error, idle
+expect flash card
+expect flash error
+expect idle

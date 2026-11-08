@@ -1,0 +1,26 @@
+# Admin cards for parents.
+click vol-up
+click vol-up
+click vol-up
+click vol-up
+expect volume 60
+tap admin-vol-max-50
+expect flash ack
+expect volume 50
+expect max-volume 50
+lift
+click vol-up
+expect volume 50                 # new cap holds
+
+tap admin-bt-pair
+expect cmd open-bluetooth-pairing
+expect led bt-pairing
+lift
+
+tap admin-sleep-1
+lift
+tap song-660
+wait 59s
+expect playing song-660
+wait 2s
+expect paused song-660           # sleep timer fired

@@ -1,0 +1,22 @@
+# Basic loop: tap a card, it plays from the library; lift pauses; same card resumes.
+expect led idle
+expect volume 40
+
+tap story-440
+expect flash card
+expect playing story-440
+expect loaded tone-440.wav       # found by hash, not downloaded
+expect led playing
+
+wait 30s
+lift
+expect cmd pause
+expect paused story-440
+expect position story-440 30s
+
+wait 5m                          # time passes while paused: position must not move
+tap story-440
+expect cmd resume
+expect not cmd play              # resumed in place, not reloaded
+wait 10s
+expect position story-440 40s

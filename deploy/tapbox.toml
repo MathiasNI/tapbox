@@ -1,0 +1,26 @@
+# /etc/tapbox/tapbox.toml: example config for the box.
+data-dir = "/var/lib/tapbox"
+library-dir = "/var/lib/tapbox/library"
+allow-http = true
+max-download-mb = 512
+
+[core]
+initial-volume = 40
+max-volume = 70          # hearing protection; a vol-max control card can lower it
+volume-step = 5
+on-card-removed = "pause"
+control-cards = true
+pairing-window = 120     # seconds
+
+# BCM GPIO numbers, see docs/hardware.md. These are the defaults.
+[hardware]
+button-volume-down = 5
+button-play = 27
+button-volume-up = 13
+led-rgb = [12, 16, 26]
+nfc-irq = 4
+i2c-bus = "/dev/i2c-1"
+
+# Blank cards: UID (hex) → sources.
+[uid-map]
+# "04a1b2c3d4e5f6" = ["ni:///sha-256;…", "https://example.org/story.mp3"]

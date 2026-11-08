@@ -1,0 +1,47 @@
+[workspace]
+resolver = "3"
+members = ["crates/tapbox-card", "crates/tapbox-core", "crates/tapboxd"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/MathiasNI/tapbox"
+
+[workspace.dependencies]
+tapbox-card = { path = "crates/tapbox-card", version = "0.1.0" }
+tapbox-core = { path = "crates/tapbox-core", version = "0.1.0" }
+
+anyhow = "1.0.104"
+base64 = "0.23.1"
+clap = { version = "4.6.7", features = ["derive"] }
+proptest = "1.12.0"
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "http2"] }
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std"] }
+sd-notify = "0.5.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
+tempfile = "3.27.0"
+thiserror = "2.0.21"
+tokio = { version = "1.54.1", features = ["rt", "macros", "io-util", "io-std", "net", "process", "sync", "time", "fs", "signal"] }
+toml = "1.2.1"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+module_name_repetitions = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"

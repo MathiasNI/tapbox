@@ -1,0 +1,5 @@
+{
+  "uid": "04c0000001a0b0",
+  "description": "Only a URI record, as NFC Tools on a phone writes it",
+  "uri": "https://example.org/podcast.mp3"
+}

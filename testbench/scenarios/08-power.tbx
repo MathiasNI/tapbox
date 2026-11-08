@@ -1,0 +1,42 @@
+# Power: the master switch cuts power with no warning. That is fine: switching
+# off is a fresh start. Only the parents' max volume survives (hearing
+# protection); Wi-Fi and Bluetooth pairings are kept by the system, not tapboxd.
+
+# Clean shutdown (low battery, `poweroff`): stop playing, show it on the LED.
+tap story-440
+wait 42s
+power off
+expect cmd pause
+expect not cmd persist           # nothing about playback is written
+expect led shutting-down
+
+# Within one session, lifting and re-tapping resumes.
+power cut
+tap story-440
+wait 30s
+lift
+tap story-440
+expect cmd resume
+
+# After a power cut: fresh start, default volume, from the beginning.
+click vol-down
+click vol-down
+expect volume 30
+power cut
+expect idle
+expect led idle
+expect volume 40
+tap story-440
+expect cmd play
+expect not cmd resume
+lift
+
+# Max volume set by a parent's card survives.
+tap admin-vol-max-50
+expect cmd persist
+lift
+power cut
+expect max-volume 50
+click vol-up
+click vol-up
+expect volume 50

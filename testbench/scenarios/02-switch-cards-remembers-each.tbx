@@ -1,0 +1,12 @@
+# Each card keeps its own resume position.
+tap story-440
+wait 20s
+lift
+tap song-660
+expect loaded tone-660.wav
+wait 5s
+lift
+tap story-440
+expect cmd play                  # different card was loaded: reload…
+expect position story-440 20s    # …from where it was
+expect loaded tone-440.wav

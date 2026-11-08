@@ -1,0 +1,5 @@
+{
+  "uid": "04a1000004a0b0",
+  "description": "Hash not in the library + URL: downloaded and verified (needs network)",
+  "card": { "v": 1, "t": "Remote story", "s": ["ni:///sha-256;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "https://example.org/remote.mp3"] }
+}

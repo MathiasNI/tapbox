@@ -1,0 +1,5 @@
+{
+  "uid": "04d0000003a0b0",
+  "description": "Control card: sleep timer, 1 minute",
+  "card": { "v": 1, "t": "Sleep 1 min", "c": "sleep:1" }
+}
