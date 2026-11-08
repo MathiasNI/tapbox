@@ -15,12 +15,13 @@
 part = "assembly"; // [assembly, shell, lid]
 
 /* [Box] */
-W = 130;          // width
+// A cube with evenly rounded edges. Keep r_front <= R and r_back <= R.
+W = 124;          // width
 H = 124;          // height
-D = 76;           // depth
-R = 14;           // corner radius seen from the front
-r_front = 1.5;    // edge radius around the front face (small: this face prints on the bed)
-r_back = 4;       // edge radius around the back face
+D = 124;          // depth
+R = 6;            // corner radius seen from the front (edges running front to back)
+r_front = 2;      // edge radius around the front face (small: this face prints on the bed)
+r_back = 6;       // edge radius around the back face
 wall = 2.4;       // side, front and bottom walls
 top_wall = 3.2;   // top wall: tray_depth + tray floor
 
@@ -28,7 +29,7 @@ top_wall = 3.2;   // top wall: tray_depth + tray floor
 tray_w = 90;
 tray_d = 58;
 tray_depth = 2;   // leaves top_wall - tray_depth = 1.2 mm floor over the reader
-tray_front = 12;  // tray front edge, from the front face
+tray_front = (D - tray_d) / 2;  // tray centred front to back (33)
 tray_r = 4;
 notch_d = 16;     // finger notch at the tray's front edge
 
@@ -40,14 +41,14 @@ hole_pitch = 5;       // hex grid pitch
 led_d = 5;
 led_cz_top = 9;
 btn_cz_top = 102;
-btn_x = [30, 65, 100];
+btn_x = [27, 62, 97];
 btn_d = [24, 30, 24]; // vol -, play, vol +
 
 /* [Speaker mount] */
 speaker_screw_spacing = 50; // square pattern; match your driver
 speaker_boss_d = 7;
 speaker_boss_h = 5;
-speaker_insert_d = 3.6;     // M2.5 heat-set insert
+speaker_insert_d = 3.3;     // M2.5 heat-set insert, OD 3.5
 
 /* [Back lid] */
 lid_t = 3;
@@ -55,7 +56,7 @@ lid_inset = 4;        // lid seat inset from the outer edge
 lid_clear = 0.15;     // per side
 flange_t = 2;         // ledge the lid rests on
 flange_inset = 16;    // opening through the ledge, inset from the outer edge
-screw_x = [12, 118];
+screw_x = [12, 112];
 screw_z = [14, 112];
 boss_d = 8;
 insert_d = 4.0;       // M3 heat-set insert
@@ -66,25 +67,29 @@ cbore_h = 1.5;
 usbc_w = 10;
 usbc_h = 4.5;
 usbc_cz = 12;         // from bottom
-pi_cx = 65;
+pi_cx = 62;
 pi_cz = 56;           // Pi Zero mounted upright on the lid
 pi_hole_dx = 23;
 pi_hole_dz = 58;
 pi_hole_d = 2.7;      // M2.5 standoffs
 
 /* [Power switch (back lid)] */
-// Miniature latching toggle (MTS-101 style, M6 bushing) in the battery line.
-// Low on the lid, clear of the lid screw at x = 118 and the Pi above z ~ 23.
-switch_d = 6.3;       // through hole for the M6 bushing
-switch_x = 100;       // model x (seen from the front; it is on the left seen from the back)
-switch_z = 14;        // from bottom
-switch_notch = 16;    // square cut in the lid ledge around the switch body (~8 x 13 mm)
+// Snap-in rocker TE PRASA1-16F-BB0BW (RS 718-2247) in the battery line, mounted
+// upright (I at the top). It snaps into a 0.75-1.25 mm panel, so the 3 mm lid is
+// thinned to switch_skin in a pocket on its inside face around the cutout.
+// Placed beside the Pi stack (x 47-77) and clear of the lid screw boss at x = 112.
+switch_cut = [13.0, 19.2]; // panel cutout, w x h
+switch_x = 96;        // model x (seen from the front; it is on the left seen from the back)
+switch_z = 26;        // cutout centre, from bottom
+switch_skin = 1.0;    // lid thickness left at the cutout (switch takes 0.75-1.25)
+switch_pocket = [18, 25];  // inside pocket around the cutout, room for the snap clips
+switch_notch = [18, 25];   // cut in the lid ledge so the body (12.8 x 18, ~21 deep) passes
 
 /* [Feet] */
 foot_d = 10;
 foot_depth = 1;
-foot_x = [12, 118];
-foot_y = [15, 61];
+foot_x = [12, 112];
+foot_y = [15, 109];
 
 /* [Quality] */
 $fn = 64;
@@ -97,6 +102,13 @@ eps = 0.01;
 module torus_y(cx, y, cz, major, minor) {
     translate([cx, y, cz]) rotate([90, 0, 0])
         rotate_extrude() translate([major - minor, 0]) circle(r = minor);
+}
+
+// One rounded corner of the outer body. When the edge radius equals the corner
+// radius the torus degenerates (its profile would touch the axis), so use a sphere.
+module body_corner(cx, y, cz, major, minor) {
+    if (major - minor < eps) translate([cx, y, cz]) sphere(r = minor);
+    else torus_y(cx, y, cz, major, minor);
 }
 
 // Rounded rectangle in the x/z plane, extruded from y0 to y1.
@@ -120,8 +132,8 @@ module front_hole(x, z, d) {
 
 module outer_body() {
     hull() for (cx = [R, W - R], cz = [R, H - R]) {
-        torus_y(cx, r_front, cz, R, r_front);
-        torus_y(cx, D - r_back, cz, R, r_back);
+        body_corner(cx, r_front, cz, R, r_front);
+        body_corner(cx, D - r_back, cz, R, r_back);
     }
 }
 
@@ -198,9 +210,9 @@ module shell_cuts() {
     translate([W / 2 - usbc_w / 2 - 3, D - lid_t - flange_t - 1, usbc_cz - usbc_h / 2 - 3])
         cube([usbc_w + 6, flange_t + 2, usbc_h + 6]);
 
-    // notch in the ledge so the power switch body passes (it sits below the ledge opening)
-    translate([switch_x - switch_notch / 2, D - lid_t - flange_t - 1, switch_z - switch_notch / 2])
-        cube([switch_notch, flange_t + 2, switch_notch]);
+    // notch in the ledge so the power switch body and its snap clips pass
+    translate([switch_x - switch_notch[0] / 2, D - lid_t - flange_t - 1, switch_z - switch_notch[1] / 2])
+        cube([switch_notch[0], flange_t + 2, switch_notch[1]]);
 
     // feet recesses
     for (fx = foot_x, fy = foot_y)
@@ -233,8 +245,11 @@ module lid() {
         for (dx = [-pi_hole_dx / 2, pi_hole_dx / 2], dz = [-pi_hole_dz / 2, pi_hole_dz / 2])
             translate([pi_cx + dx, D + 1, pi_cz + dz]) rotate([90, 0, 0])
                 cylinder(d = pi_hole_d, h = lid_t + 2);
-        // power switch
-        translate([switch_x, D + 1, switch_z]) rotate([90, 0, 0]) cylinder(d = switch_d, h = lid_t + 2);
+        // power switch: rectangular cutout, and a pocket that thins the lid to switch_skin
+        translate([switch_x - switch_cut[0] / 2, D - lid_t - 1, switch_z - switch_cut[1] / 2])
+            cube([switch_cut[0], lid_t + 2, switch_cut[1]]);
+        translate([switch_x - switch_pocket[0] / 2, D - lid_t - 1, switch_z - switch_pocket[1] / 2])
+            cube([switch_pocket[0], lid_t - switch_skin + 1, switch_pocket[1]]);
     }
 }
 
