@@ -107,6 +107,6 @@ cargo run -p tapboxd -- card decode '03 9b d2 1b …'
 | Audio | simulated clock, or mpv | mpv → PipeWire → MAX98357A |
 | Bluetooth / AirPlay | `bluetooth` / `airplay` commands | BlueZ over D-Bus, shairport-sync hooks |
 | Battery | `battery low\|ok` | LiFePO4wered daemon |
-| Power switch | `power cut` | Toggle in the battery line; boot via `AUTO_BOOT_VBAT` |
+| Power switch | `power cut` | Rocker switch in the battery line; boot via `AUTO_BOOT_VBAT` |
 | Low-battery shutdown | `power off` | LiFePO4wered/Pi+ → shutdown → SIGTERM to tapboxd |
 | Wi-Fi setup, speech | recorded only | comitup, TTS |
