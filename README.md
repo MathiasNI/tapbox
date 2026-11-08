@@ -38,7 +38,7 @@ See [`docs/testbench.md`](docs/testbench.md).
 crates/
   tapbox-card/   Card codec: NDEF TLV + application/vnd.tapbox+json. No I/O.
   tapbox-core/   State machine: events in, commands out. No I/O, no clock.
-  tapboxd/       Daemon: resolver, player (sim/mpv), state store, testbench, CLI.
+  tapboxd/       Daemon: resolver, player (sim/mpv), state store, web app, testbench, CLI.
 testbench/       Bench config, virtual cards, test audio, scenarios.
 deploy/          systemd user unit, example /etc/tapbox/tapbox.toml.
 card-spec/
@@ -49,7 +49,7 @@ docs/
   software-rust.md   Rust research: crates, build, boot, quality bar
   testbench.md       Running and scripting the testbench
   hardware.md        Parts list, wiring, caveats
-  setup-ux.md        Headless setup: Wi-Fi, web app, LED, gestures, Spotify
+  setup-ux.md        Wi-Fi setup, the web app, LED, gestures, Spotify
   enclosure.md       Enclosure dimensions, print settings, assembly
   research.md        Best-practice research, with sources
 hardware/enclosure/  Parametric OpenSCAD model
