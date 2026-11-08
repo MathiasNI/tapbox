@@ -34,3 +34,5 @@ expect cmd enter-wifi-setup
 expect led wifi-setup
 release vol-down
 release vol-up
+wifi done                        # comitup: connected (or hotspot timed out)
+expect led playing

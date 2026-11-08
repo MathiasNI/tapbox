@@ -2,8 +2,9 @@
 # shares a session with PipeWire. Install to /usr/lib/systemd/user/ and run:
 #   sudo loginctl enable-linger tapbox
 #   systemctl --user enable --now tapboxd     (as tapbox)
-# Until the hardware drivers land, `tapboxd run` exits with a message;
-# use `tapboxd sim` on a laptop instead.
+# Until the hardware drivers land, `tapboxd run` exits with code 78 (EX_CONFIG),
+# which RestartPreventExitStatus stops systemd from retrying.
+# Use `tapboxd sim` on a laptop instead.
 [Unit]
 Description=tapbox daemon
 After=pipewire.service wireplumber.service
@@ -14,6 +15,7 @@ Type=notify
 ExecStart=/usr/bin/tapboxd run --config /etc/tapbox/tapbox.toml
 Restart=always
 RestartSec=2s
+RestartPreventExitStatus=78
 WatchdogSec=10s
 TimeoutStopSec=10s
 NoNewPrivileges=yes

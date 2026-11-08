@@ -4,9 +4,13 @@
 //! when the card also carries a hash, streamed otherwise) → plugins. Spotify
 //! and manifests are not handled yet and are skipped.
 
-use std::collections::HashMap;
-use std::fs;
+use std::collections::{BTreeMap, HashMap};
+use std::fs::{self, File};
+use std::io::{BufReader, Read as _, Write as _};
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
+
+use serde::{Deserialize, Serialize};
 
 use anyhow::{Context as _, Result, bail};
 use sha2::{Digest as _, Sha256};
@@ -56,19 +60,41 @@ pub struct Resolver {
 }
 
 impl Resolver {
-    /// Index `library_dir` (by hashing every file) and `cache_dir` (by file name).
+    /// Index `library_dir` by content hash, and `cache_dir` by file name.
+    ///
+    /// Library files are hashed in chunks (memory use stays flat for any file
+    /// size). With `index_file`, hashes are remembered by file name, size and
+    /// modification time, so a boot only hashes new or changed files.
     ///
     /// # Errors
     /// If a directory exists but can't be read.
-    pub fn new(library_dir: &Path, cache_dir: PathBuf, allow_http: bool) -> Result<Self> {
+    pub fn new(library_dir: &Path, cache_dir: PathBuf, index_file: Option<&Path>, allow_http: bool) -> Result<Self> {
         let mut files = HashMap::new();
         if library_dir.is_dir() {
+            let previous = index_file.map(LibraryIndex::load).unwrap_or_default();
+            let mut current = LibraryIndex::default();
             for entry in fs::read_dir(library_dir).with_context(|| format!("reading {}", library_dir.display()))? {
                 let path = entry?.path();
-                if path.is_file() {
-                    let digest = Sha256::digest(fs::read(&path)?);
-                    files.insert(ContentHash::from_digest(digest.into()), path);
+                let Some(name) = path.file_name().and_then(|name| name.to_str()).map(str::to_owned) else {
+                    continue;
+                };
+                let metadata = fs::metadata(&path)?;
+                if !metadata.is_file() || name.starts_with('.') {
+                    continue;
                 }
+                let stamp = FileStamp::of(&metadata);
+                let hash = match previous.files.get(&name) {
+                    Some(known) if known.stamp == stamp => known.hash,
+                    _ => hash_file(&path).with_context(|| format!("hashing {}", path.display()))?,
+                };
+                current.files.insert(name, IndexedFile { stamp, hash });
+                files.insert(hash, path);
+            }
+            if let Some(index_file) = index_file
+                && current != previous
+                && let Err(err) = current.save(index_file)
+            {
+                tracing::warn!(%err, "cannot save the library index; it will be rebuilt next boot");
             }
         }
         if cache_dir.is_dir() {
@@ -124,6 +150,87 @@ impl Resolver {
     #[must_use]
     pub fn cache_dir(&self) -> &Path {
         &self.cache_dir
+    }
+}
+
+/// Hash a file in 64 KiB chunks.
+fn hash_file(path: &Path) -> std::io::Result<ContentHash> {
+    let mut reader = BufReader::new(File::open(path)?);
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        let read = reader.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(ContentHash::from_digest(hasher.finalize().into()))
+}
+
+/// What a library file looked like when it was hashed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+struct FileStamp {
+    size: u64,
+    modified_secs: u64,
+    modified_nanos: u32,
+}
+
+impl FileStamp {
+    fn of(metadata: &fs::Metadata) -> Self {
+        let modified =
+            metadata.modified().ok().and_then(|time| time.duration_since(UNIX_EPOCH).ok()).unwrap_or_default();
+        Self { size: metadata.len(), modified_secs: modified.as_secs(), modified_nanos: modified.subsec_nanos() }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+struct IndexedFile {
+    #[serde(flatten)]
+    stamp: FileStamp,
+    #[serde(with = "hex_hash")]
+    hash: ContentHash,
+}
+
+/// Saved hashes of library files, keyed by file name.
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+struct LibraryIndex {
+    files: BTreeMap<String, IndexedFile>,
+}
+
+impl LibraryIndex {
+    /// A missing or unreadable index just means everything gets hashed again.
+    fn load(path: &Path) -> Self {
+        fs::read(path).ok().and_then(|bytes| serde_json::from_slice(&bytes).ok()).unwrap_or_default()
+    }
+
+    /// Atomic write, like the state store: power can go at any moment.
+    fn save(&self, path: &Path) -> Result<()> {
+        let dir = path.parent().context("index file has no parent directory")?;
+        fs::create_dir_all(dir)?;
+        let tmp = path.with_extension("json.tmp");
+        {
+            let mut file = File::create(&tmp)?;
+            file.write_all(&serde_json::to_vec(self)?)?;
+            file.sync_all()?;
+        }
+        fs::rename(&tmp, path)?;
+        File::open(dir)?.sync_all()?;
+        Ok(())
+    }
+}
+
+mod hex_hash {
+    use serde::{Deserialize, Deserializer, Serializer, de::Error as _};
+    use tapbox_card::ContentHash;
+
+    pub(super) fn serialize<S: Serializer>(hash: &ContentHash, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&hash.to_hex())
+    }
+
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<ContentHash, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        super::hash_from_hex(&text).ok_or_else(|| D::Error::custom("bad hash"))
     }
 }
 
@@ -191,7 +298,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join("lib")).unwrap();
         fs::write(dir.path().join("lib/a.mp3"), content).unwrap();
-        let resolver = Resolver::new(&dir.path().join("lib"), dir.path().join("cache"), false).unwrap();
+        let resolver = Resolver::new(&dir.path().join("lib"), dir.path().join("cache"), None, false).unwrap();
         let hash = ContentHash::from_digest(Sha256::digest(content).into());
         (dir, resolver, hash)
     }
@@ -233,6 +340,42 @@ mod tests {
             resolver.resolve(&sources(&["http://nas/a.mp3", "file:///etc/passwd", "spotify:album:x"])),
             Resolution::Unresolvable
         );
+    }
+
+    #[test]
+    fn chunked_hash_matches_one_shot_hash() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.bin");
+        let content: Vec<u8> = (0..200_000u32).map(|i| (i % 251) as u8).collect();
+        fs::write(&path, &content).unwrap();
+        assert_eq!(hash_file(&path).unwrap(), ContentHash::from_digest(Sha256::digest(&content).into()));
+    }
+
+    #[test]
+    fn index_skips_unchanged_files_and_rehashes_changed_ones() {
+        let dir = tempfile::tempdir().unwrap();
+        let lib = dir.path().join("lib");
+        let index = dir.path().join("state/library-index.json");
+        fs::create_dir(&lib).unwrap();
+        fs::write(lib.join("a.mp3"), b"one").unwrap();
+        let first = Resolver::new(&lib, dir.path().join("cache"), Some(&index), false).unwrap();
+        let hash_one = ContentHash::from_digest(Sha256::digest(b"one").into());
+        assert!(first.files.contains_key(&hash_one));
+
+        // A wrong hash planted in the index for an unchanged file is trusted:
+        // proof that the file was not hashed again.
+        let mut saved = LibraryIndex::load(&index);
+        let planted = ContentHash::from_digest([9; 32]);
+        saved.files.get_mut("a.mp3").unwrap().hash = planted;
+        saved.save(&index).unwrap();
+        let second = Resolver::new(&lib, dir.path().join("cache"), Some(&index), false).unwrap();
+        assert!(second.files.contains_key(&planted));
+
+        // Changing the file (size differs) forces a re-hash.
+        fs::write(lib.join("a.mp3"), b"two!").unwrap();
+        let third = Resolver::new(&lib, dir.path().join("cache"), Some(&index), false).unwrap();
+        assert!(third.files.contains_key(&ContentHash::from_digest(Sha256::digest(b"two!").into())));
+        assert!(!third.files.contains_key(&planted));
     }
 
     #[test]

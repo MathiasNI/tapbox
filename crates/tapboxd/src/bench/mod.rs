@@ -116,7 +116,10 @@ impl Bench {
     ) -> Result<(App, mpsc::UnboundedReceiver<AppMsg>)> {
         let saved = store.as_ref().map(Store::load).unwrap_or_default();
         let core = Core::new(self.config.core.clone(), self.config.uid_sources()?).with_state(saved);
-        let resolver = Resolver::new(&self.config.library_dir, self.config.cache_dir(), self.config.allow_http)?;
+        // Scenarios (memory store) hash fresh and write nothing; `sim` keeps an index on disk.
+        let index = store.as_ref().filter(|store| store.is_on_disk()).map(|_| self.config.library_index_file());
+        let resolver =
+            Resolver::new(&self.config.library_dir, self.config.cache_dir(), index.as_deref(), self.config.allow_http)?;
         App::new(Parts {
             core,
             player,

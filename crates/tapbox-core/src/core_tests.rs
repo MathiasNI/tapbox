@@ -269,6 +269,7 @@ fn hold_both_volume_buttons_enters_wifi_setup() {
     let out = b.wait(5000);
     assert!(has(&out, &Command::EnterWifiSetup));
     assert!(has(&out, &Command::Led(LedState::WifiSetup)));
+    assert!(has(&b.send(Event::WifiSetupEnded), &Command::Led(LedState::Idle)));
 }
 
 #[test]

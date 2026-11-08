@@ -109,6 +109,12 @@ impl Config {
         self.data_dir.join("state.json")
     }
 
+    /// Saved library hashes, so boots only hash new or changed files.
+    #[must_use]
+    pub fn library_index_file(&self) -> PathBuf {
+        self.data_dir.join("library-index.json")
+    }
+
     /// Where verified downloads are cached.
     #[must_use]
     pub fn cache_dir(&self) -> PathBuf {

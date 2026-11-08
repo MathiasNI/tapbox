@@ -217,6 +217,7 @@ impl Core {
             Event::ExternalStopped(source) => self.on_external_stopped(source, &mut out),
             Event::BatteryLow => self.battery_low = true,
             Event::BatteryOk => self.battery_low = false,
+            Event::WifiSetupEnded => self.wifi_setup = false,
             Event::PowerOff => self.power_off(&mut out),
         }
         self.finish(&mut out);

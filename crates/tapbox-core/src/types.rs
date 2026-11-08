@@ -163,6 +163,9 @@ pub enum Event {
     BatteryLow,
     /// The battery is charging or no longer low.
     BatteryOk,
+    /// Wi-Fi setup finished: connected to a network, or the hotspot timed out
+    /// (reported by comitup).
+    WifiSetupEnded,
     /// The system is shutting down cleanly: the battery board reached its
     /// low-battery threshold, or someone ran `poweroff`. The daemon sees this
     /// as SIGTERM from systemd. (The master switch cuts power without

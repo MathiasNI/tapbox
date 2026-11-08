@@ -56,6 +56,7 @@ Same in both modes. One command per line, `#` starts a comment.
 | `wait <time>` | `500ms`, `3s`, `2m` |
 | `bluetooth start\|stop`, `airplay start\|stop` | Another source takes or leaves the speaker |
 | `battery low\|ok` | Battery board report |
+| `wifi done` | Wi-Fi setup finished (connected, or the hotspot timed out) |
 | `power off` | Clean shutdown (low battery, `poweroff`) |
 | `power cut` | Master switch OFF then ON: a fresh boot. Only the max volume survives |
 | `player end\|fail` | End or fail the current track now |

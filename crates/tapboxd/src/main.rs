@@ -3,12 +3,16 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use tapbox_card::{Card, TagContent, decode_tag, encode_tag};
 use tapboxd::bench::{self, Bench, format_hex, parse_hex};
 use tapboxd::player::{MpvPlayer, Player, SimPlayer};
 use tapboxd::store::Store;
+
+/// `sysexits.h` `EX_CONFIG`. The systemd unit doesn't restart on it
+/// (`RestartPreventExitStatus=78`): a broken setup won't fix itself by retrying.
+const EX_CONFIG: u8 = 78;
 
 #[derive(Parser)]
 #[command(name = "tapboxd", version, about = "The tapbox daemon and its testbench")]
@@ -118,10 +122,13 @@ async fn run(cli: Cli) -> Result<ExitCode> {
             let scenarios = if scenarios.is_empty() { all_scenarios(&bench.dir.join("scenarios"))? } else { scenarios };
             run_tests(&bench, &scenarios).await
         }
-        Cmd::Run { config } => bail!(
-            "hardware drivers are not written yet (config: {}). Use `tapboxd sim` to try the box on this machine.",
-            config.display()
-        ),
+        Cmd::Run { config } => {
+            eprintln!(
+                "error: hardware drivers are not written yet (config: {}). Use `tapboxd sim` to try the box on this machine.",
+                config.display()
+            );
+            Ok(ExitCode::from(EX_CONFIG))
+        }
         Cmd::Card(CardCmd::Encode { json, phone_uri }) => {
             let card = Card::from_json(json.as_bytes()).context("invalid card JSON")?;
             let bytes = encode_tag(&card, phone_uri.as_deref())?;

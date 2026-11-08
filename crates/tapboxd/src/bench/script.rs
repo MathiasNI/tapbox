@@ -10,6 +10,7 @@
 //! wait <time>             let time pass, e.g. 500ms, 3s, 2m
 //! bluetooth|airplay start|stop
 //! battery low|ok
+//! wifi done               Wi-Fi setup finished (connected or timed out)
 //! power off               clean shutdown (battery board's low-battery threshold, `poweroff`)
 //! power cut               master switch flipped off: power gone, no warning; boots again from saved state
 //! player end|fail         end or fail the current track now
@@ -56,6 +57,8 @@ pub enum Step {
     External(ExternalSource, bool),
     /// Battery low (`true`) or ok.
     Battery(bool),
+    /// Wi-Fi setup finished.
+    WifiDone,
     /// Clean shutdown.
     PowerOff,
     /// Power cut and restored: a fresh boot from saved state.
@@ -130,6 +133,7 @@ pub fn parse_line(line: &str) -> Result<Option<Step>> {
         ["airplay", state] => Step::External(ExternalSource::AirPlay, parse_start_stop(state)?),
         ["battery", "low"] => Step::Battery(true),
         ["battery", "ok"] => Step::Battery(false),
+        ["wifi", "done"] => Step::WifiDone,
         ["power", "off"] => Step::PowerOff,
         ["power", "cut"] => Step::PowerCut,
         ["player", "end"] => Step::PlayerEnd,

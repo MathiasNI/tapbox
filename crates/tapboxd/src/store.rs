@@ -40,6 +40,13 @@ impl Store {
         Self { backend: Backend::Memory(Arc::default()) }
     }
 
+    /// Whether this store writes to disk (the daemon and `sim`), as opposed to
+    /// memory (scenarios).
+    #[must_use]
+    pub fn is_on_disk(&self) -> bool {
+        matches!(self.backend, Backend::File(_))
+    }
+
     /// Load saved state. A missing file is a first boot; a corrupt file is
     /// logged and ignored, so a bad write can never keep the box from starting.
     #[must_use]
