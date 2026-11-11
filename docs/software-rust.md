@@ -34,7 +34,7 @@ PipeWire runs as a user service, so the audio stack runs as a dedicated `tapbox`
 - **Watchdog ping from the main event loop**, not a separate timer task, so a deadlocked core stops the pings and gets restarted.
 - **Hardware watchdog** for kernel hangs: `RuntimeWatchdogSec=15s` in `/etc/systemd/system.conf`.
 - `DynamicUser=` doesn't fit (needs fixed groups `gpio`, `i2c`, a runtime dir for PipeWire). Run `systemd-analyze security --user tapboxd` and tighten from there.
-- **Power-loss safety:** the master switch cuts power without warning. Read-only root + overlayfs; the only state tapboxd writes is the parents' max volume, atomically (temp → fsync → rename → fsync dir) and only when it changes. Playback state lives in memory: switching off is a fresh start. Wi-Fi and Bluetooth state (NetworkManager, BlueZ) goes on the writable data partition.
+- **Power-loss safety:** the power switch (or pulling the plug) cuts power without warning. Read-only root + overlayfs; tapboxd only writes what parents set up (max volume, card links, library), atomically (temp → fsync → rename → fsync dir) and only when it changes. Playback state lives in memory: switching off is a fresh start. Wi-Fi and Bluetooth state (NetworkManager, BlueZ) goes on the writable data partition.
 
 ## Architecture: functional core, imperative shell
 
@@ -67,7 +67,7 @@ web app ─┘                          └─> state store
 | I²C / NFC | `linux-embedded-hal` 0.4 + `pn532` 0.4 | next |
 | LED | sysfs PWM (`pwm-gpio` overlay) | next |
 | D-Bus / BlueZ | `zbus` | later |
-| Web app | `axum` | later |
+| Web app | `axum` (SSE, multipart uploads) | in use |
 
 ## Quality bar
 

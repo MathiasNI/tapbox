@@ -65,7 +65,7 @@ Same in both modes. One command per line, `#` starts a comment.
 | `bluetooth start\|stop`, `airplay start\|stop` | Another source takes or leaves the speaker |
 | `wifi done` | Wi-Fi setup finished (connected, or the hotspot timed out) |
 | `power off` | Clean shutdown (`poweroff`, an update) |
-| `power cut` | Master switch OFF then ON: a fresh boot. Only the max volume survives |
+| `power cut` | Power switch OFF then ON (or the plug pulled): a fresh boot. Only parent settings survive |
 | `player end\|fail` | End or fail the current track now |
 | `track-length <time>` | Length of simulated tracks (default 5 min) |
 | `expect led <state>` | `idle`, `playing`, `airplay`, `bt-pairing`, `wifi-setup`, `shutting-down` |

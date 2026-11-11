@@ -71,7 +71,7 @@ Rule: **last source to start wins.**
 
 ## Robustness
 
-- Read-only root with overlayfs (**required**: the master switch cuts power without warning), data on a separate writable partition (library, cache, settings).
+- Read-only root with overlayfs (**required**: the power switch or the plug cuts power without warning), data on a separate writable partition (library, cache, settings).
 - tapboxd writes only on purpose, never during playback: parent settings (`state.json`), card links and the box name (`box.json`), the library index, and uploads (streamed to a `.part` file, renamed when complete). JSON files are written atomically (temp → fsync → rename → fsync dir). Wi-Fi and Bluetooth pairings (NetworkManager, BlueZ) live on the writable data partition.
 - Mains powered, no battery. A rocker switch breaks the 5 V line from the USB-C socket; OFF (or pulling the plug) is a hard cut, ON boots the Pi. Switching off is a fresh start by design: resume positions and volume live in memory only; the testbench's `power cut` checks this. A clean `poweroff` (updates, maintenance) reaches tapboxd as SIGTERM, and it stops playing.
 - Card data is untrusted input: size limits, allowed schemes only, no local paths from cards, hashes verified after download. No panics on card data (`unwrap`/`expect`/`panic` denied outside tests).
