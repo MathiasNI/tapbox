@@ -229,12 +229,8 @@ pub enum Event {
     ExternalStarted(ExternalSource),
     /// Bluetooth or AirPlay stopped playing.
     ExternalStopped(ExternalSource),
-    /// The battery board reports a low battery.
-    BatteryLow,
-    /// The battery is charging or no longer low.
-    BatteryOk,
     /// Wi-Fi setup finished: connected to a network, or the hotspot timed out
-    /// (reported by comitup).
+    /// (reported by NetworkManager).
     WifiSetupEnded,
     /// A control command from the web app (same effect as the control card).
     Control(tapbox_card::ControlCommand),
@@ -242,10 +238,9 @@ pub enum Event {
     SetVolume(Percent),
     /// Change what happens when a card is lifted (web app setting).
     SetOnCardRemoved(crate::OnCardRemoved),
-    /// The system is shutting down cleanly: the battery board reached its
-    /// low-battery threshold, or someone ran `poweroff`. The daemon sees this
-    /// as SIGTERM from systemd. (The master switch cuts power without
-    /// warning; nothing is sent for that, and nothing needs to be.)
+    /// The system is shutting down cleanly (`poweroff`, an update). The
+    /// daemon sees this as SIGTERM from systemd. (The power switch cuts power
+    /// without warning; nothing is sent for that, and nothing needs to be.)
     PowerOff,
 }
 
@@ -275,8 +270,6 @@ pub enum LedState {
     BluetoothPairing,
     /// Orange blinking.
     WifiSetup,
-    /// Red slow blink.
-    BatteryLow,
     /// White fading out.
     ShuttingDown,
 }

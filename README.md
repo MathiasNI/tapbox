@@ -30,7 +30,7 @@ See [`docs/testbench.md`](docs/testbench.md).
 ## Status
 
 - **Done:** card codec (`tapbox-card`), state machine (`tapbox-core`), daemon shell with resolver, hash-verified downloads, power-safe state and mpv playback; web app (Wi-Fi setup, library uploads, linking cards, problem log, settings); testbench with virtual cards and 8 scenarios.
-- **Next:** hardware drivers (PN532, buttons, LED, battery), NetworkManager/Avahi behind the Wi-Fi setup, then Bluetooth/AirPlay integration and Spotify. See [Roadmap](#roadmap).
+- **Next:** hardware drivers (PN532, buttons, LED), NetworkManager/Avahi behind the Wi-Fi setup, then Bluetooth/AirPlay integration and Spotify. See [Roadmap](#roadmap).
 
 ## Repo layout
 
@@ -75,13 +75,13 @@ https://claude.ai/artifact/Rz8SQfL9gafV2fqdRtXBRE (private until you share it)
 1. ~~Card spec codec and test vectors~~
 2. ~~Workspace, CI, lints, `cargo deny`, aarch64-musl build~~
 3. ~~Core state machine + testbench on a laptop~~
-4. **Hardware bring-up**: PN532 over I²C (+ IRQ), MAX98357A over I²S, buttons, RGB LED on `pwm-gpio`, LiFePO4wered battery status.
+4. **Hardware bring-up**: PN532 over I²C (+ IRQ), MAX98357A over I²S, buttons, RGB LED on `pwm-gpio`, USB-C power input and switch.
 5. **Audio stack**: PipeWire, Bluetooth A2DP sink, shairport-sync AirPlay 2.
 6. **Daemon on the Pi**: `tapboxd run`, systemd watchdog, `.deb`.
 7. **Web app**: ~~library, upload, link cards, settings, Wi-Fi setup page~~; write portable cards, URLs and podcasts.
 8. **Onboarding**: NetworkManager hotspot + captive DNS behind the setup page, admin cards.
 9. **Plugins**: Spotify via go-librespot, podcasts and manifests, Home Assistant / Music Assistant.
-10. **Hardening**: read-only root (overlayfs), safe shutdown, OTA updates.
+10. **Hardening**: read-only root (overlayfs), power-cut tests on the real SD card, OTA updates.
 11. **Enclosure v1**: print, test NFC range and acoustics, iterate.
 
 ## Contributing

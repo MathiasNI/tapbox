@@ -45,7 +45,7 @@ const HELP: &str = "\
 cards:    tap <card>   lift
 buttons:  click|press|release <play|vol-up|vol-down>   hold <button> <3s>
 sources:  bluetooth start|stop   airplay start|stop
-other:    battery low|ok   wifi done   power off|cut   player end|fail   track-length <time>   wait <time>
+other:    wifi done   power off|cut   player end|fail   track-length <time>   wait <time>
 checks:   expect ... (as in scenario files)   status   problems   cards   help   quit";
 
 /// Run the console until `quit`, Ctrl-D or Ctrl-C.

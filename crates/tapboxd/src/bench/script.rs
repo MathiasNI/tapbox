@@ -9,14 +9,13 @@
 //! hold <button> <time>    press, wait, release
 //! wait <time>             let time pass, e.g. 500ms, 3s, 2m
 //! bluetooth|airplay start|stop
-//! battery low|ok
 //! wifi done               Wi-Fi setup finished (connected or timed out)
-//! power off               clean shutdown (battery board's low-battery threshold, `poweroff`)
+//! power off               clean shutdown (`poweroff`, an update)
 //! power cut               master switch flipped off: power gone, no warning; boots again from saved state
 //! player end|fail         end or fail the current track now
 //! track-length <time>     length of simulated tracks loaded from now on
 //!
-//! expect led <state>      idle, playing, airplay, bt-pairing, wifi-setup, battery-low, booting
+//! expect led <state>      idle, playing, airplay, bt-pairing, wifi-setup, shutting-down, booting
 //! expect flash <kind>     card, error, ack  (during the last action)
 //! expect problem <kind>   invalid-card, unknown-card, control-cards-disabled,
 //!                         nothing-playable, download-failed, playback-failed  (during the last action)
@@ -57,8 +56,6 @@ pub enum Step {
     Wait(Duration),
     /// Bluetooth/AirPlay started (`true`) or stopped.
     External(ExternalSource, bool),
-    /// Battery low (`true`) or ok.
-    Battery(bool),
     /// Wi-Fi setup finished.
     WifiDone,
     /// Clean shutdown.
@@ -135,8 +132,6 @@ pub fn parse_line(line: &str) -> Result<Option<Step>> {
         ["wait", time] => Step::Wait(parse_duration(time)?),
         ["bluetooth" | "bt", state] => Step::External(ExternalSource::Bluetooth, parse_start_stop(state)?),
         ["airplay", state] => Step::External(ExternalSource::AirPlay, parse_start_stop(state)?),
-        ["battery", "low"] => Step::Battery(true),
-        ["battery", "ok"] => Step::Battery(false),
         ["wifi", "done"] => Step::WifiDone,
         ["power", "off"] => Step::PowerOff,
         ["power", "cut"] => Step::PowerCut,
@@ -194,7 +189,6 @@ fn parse_led(word: &str) -> Result<LedState> {
         "airplay" => LedState::AirPlay,
         "bt-pairing" => LedState::BluetoothPairing,
         "wifi-setup" => LedState::WifiSetup,
-        "battery-low" => LedState::BatteryLow,
         "shutting-down" => LedState::ShuttingDown,
         _ => bail!("unknown LED state `{word}`"),
     })

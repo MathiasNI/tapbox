@@ -71,7 +71,6 @@
   .led[data-state=airplay] { background: #9b5de5; box-shadow: 0 0 10px #9b5de5; }
   .led[data-state=bt-pairing] { background: #3a86ff; animation: blink 1s steps(2) infinite; }
   .led[data-state=wifi-setup] { background: #f28f1e; animation: blink 1s steps(2) infinite; }
-  .led[data-state=battery-low] { background: #e63946; animation: blink 2s steps(2) infinite; }
   .led[data-state=booting], .led[data-state=shutting-down] { background: #fff; animation: pulse 1.6s ease-in-out infinite; }
   .led::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; opacity: 0; }
   .led.flash-card::after { background: #2fbf63; animation: flash .7s ease-out; }
@@ -182,7 +181,7 @@ const uploads = [];           // { name, progress, error, done }
 
 // What the status light means, in words.
 const STATUS = { booting: "Starting", idle: "Ready", playing: "Playing", airplay: "Phone playing", "bt-pairing": "Bluetooth pairing",
-  "wifi-setup": "Wi-Fi setup", "battery-low": "Battery low", "shutting-down": "Turning off" };
+  "wifi-setup": "Wi-Fi setup", "shutting-down": "Turning off" };
 
 // ---------- helpers ----------
 const $ = (sel, root = document) => root.querySelector(sel);

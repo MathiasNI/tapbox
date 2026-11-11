@@ -64,9 +64,14 @@ insert_depth = 7;
 screw_d = 3.4;
 cbore_d = 6.5;
 cbore_h = 1.5;
+/* [Power input (back lid)] */
+// USB-C power socket: a 6-pin panel-mount breakout board with 5.1k CC resistors,
+// screwed to the inside of the lid. The plug goes through this cutout.
 usbc_w = 10;
 usbc_h = 4.5;
 usbc_cz = 12;         // from bottom
+usbc_screw_dx = 0;    // spacing of the board's two screw holes; 0 = no holes (glue it). Measure yours
+usbc_screw_d = 2.4;   // M2 screw, nut on the inside
 pi_cx = 62;
 pi_cz = 56;           // Pi Zero mounted upright on the lid
 pi_hole_dx = 23;
@@ -74,7 +79,7 @@ pi_hole_dz = 58;
 pi_hole_d = 2.7;      // M2.5 standoffs
 
 /* [Power switch (back lid)] */
-// Snap-in rocker TE PRASA1-16F-BB0BW (RS 718-2247) in the battery line, mounted
+// Snap-in rocker TE PRASA1-16F-BB0BW (RS 718-2247) in the 5 V line from the USB-C socket, mounted
 // upright (I at the top). It snaps into a 0.75-1.25 mm panel, so the 3 mm lid is
 // thinned to switch_skin in a pocket on its inside face around the cutout.
 // Placed beside the Pi stack (x 47-77) and clear of the lid screw boss at x = 112.
@@ -206,9 +211,10 @@ module shell_cuts() {
         translate([W / 2 + dx, wall, H - grille_cz_top + dz]) rotate([-90, 0, 0])
             cylinder(d = speaker_insert_d, h = speaker_boss_h + 1);
 
-    // notch in the ledge so the USB-C panel mount passes
-    translate([W / 2 - usbc_w / 2 - 3, D - lid_t - flange_t - 1, usbc_cz - usbc_h / 2 - 3])
-        cube([usbc_w + 6, flange_t + 2, usbc_h + 6]);
+    // notch in the ledge so the USB-C board (and its screw ears) passes
+    usbc_notch_w = max(usbc_w + 6, usbc_screw_dx + 8);
+    translate([W / 2 - usbc_notch_w / 2, D - lid_t - flange_t - 1, usbc_cz - usbc_h / 2 - 3])
+        cube([usbc_notch_w, flange_t + 2, usbc_h + 6]);
 
     // notch in the ledge so the power switch body and its snap clips pass
     translate([switch_x - switch_notch[0] / 2, D - lid_t - flange_t - 1, switch_z - switch_notch[1] / 2])
@@ -242,6 +248,10 @@ module lid() {
         }
         rrect_y(W / 2 - usbc_w / 2, usbc_cz - usbc_h / 2, W / 2 + usbc_w / 2, usbc_cz + usbc_h / 2,
                 2, D - lid_t - 1, D + 1);
+        if (usbc_screw_dx > 0)
+            for (dx = [-usbc_screw_dx / 2, usbc_screw_dx / 2])
+                translate([W / 2 + dx, D + 1, usbc_cz]) rotate([90, 0, 0])
+                    cylinder(d = usbc_screw_d, h = lid_t + 2);
         for (dx = [-pi_hole_dx / 2, pi_hole_dx / 2], dz = [-pi_hole_dz / 2, pi_hole_dz / 2])
             translate([pi_cx + dx, D + 1, pi_cz + dz]) rotate([90, 0, 0])
                 cylinder(d = pi_hole_d, h = lid_t + 2);

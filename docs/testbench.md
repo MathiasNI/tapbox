@@ -63,13 +63,12 @@ Same in both modes. One command per line, `#` starts a comment.
 | `hold <button> <time>` | Press, wait, release |
 | `wait <time>` | `500ms`, `3s`, `2m` |
 | `bluetooth start\|stop`, `airplay start\|stop` | Another source takes or leaves the speaker |
-| `battery low\|ok` | Battery board report |
 | `wifi done` | Wi-Fi setup finished (connected, or the hotspot timed out) |
-| `power off` | Clean shutdown (low battery, `poweroff`) |
+| `power off` | Clean shutdown (`poweroff`, an update) |
 | `power cut` | Master switch OFF then ON: a fresh boot. Only the max volume survives |
 | `player end\|fail` | End or fail the current track now |
 | `track-length <time>` | Length of simulated tracks (default 5 min) |
-| `expect led <state>` | `idle`, `playing`, `airplay`, `bt-pairing`, `wifi-setup`, `battery-low`, `shutting-down` |
+| `expect led <state>` | `idle`, `playing`, `airplay`, `bt-pairing`, `wifi-setup`, `shutting-down` |
 | `expect flash <kind>` | `card`, `error`, `ack`, during the last action |
 | `expect problem <kind>` | A problem was logged during the last action: `invalid-card`, `unknown-card`, `control-cards-disabled`, `nothing-playable`, `download-failed`, `playback-failed` |
 | `expect cmd <name>` | A command ran during the last action: `play`, `pause`, `resume`, `pause-bluetooth`, `mute-airplay`, `open-bluetooth-pairing`, `enter-wifi-setup`, `persist`, … |
@@ -115,8 +114,7 @@ cargo run -p tapboxd -- card decode '03 9b d2 1b …'
 | LED | printed | RGB on GPIO12/16/26, `pwm-gpio` |
 | Audio | simulated clock, or mpv | mpv → PipeWire → MAX98357A |
 | Bluetooth / AirPlay | `bluetooth` / `airplay` commands | BlueZ over D-Bus, shairport-sync hooks |
-| Battery | `battery low\|ok` | LiFePO4wered daemon |
-| Power switch | `power cut` | Rocker switch in the battery line; boot via `AUTO_BOOT_VBAT` |
-| Low-battery shutdown | `power off` | LiFePO4wered/Pi+ → shutdown → SIGTERM to tapboxd |
+| Power switch / plug | `power cut` | Rocker switch in the 5 V line from the USB-C socket |
+| Clean shutdown | `power off` | `poweroff` → SIGTERM to tapboxd |
 | Wi-Fi setup | simulated networks in the web app | NetworkManager hotspot + captive DNS, Avahi |
 | Speech | recorded only | TTS |

@@ -120,7 +120,6 @@ pub struct Core {
     buttons: ButtonTracker,
     pairing_until: Option<Millis>,
     wifi_setup: bool,
-    battery_low: bool,
     powering_off: bool,
     sleep_at: Option<Millis>,
     led: LedState,
@@ -145,7 +144,6 @@ impl Core {
             buttons: ButtonTracker::default(),
             pairing_until: None,
             wifi_setup: false,
-            battery_low: false,
             powering_off: false,
             sleep_at: None,
             led: LedState::Booting,
@@ -251,8 +249,6 @@ impl Core {
             Event::Player(event) => self.on_player(event, &mut out),
             Event::ExternalStarted(source) => self.on_external_started(source, &mut out),
             Event::ExternalStopped(source) => self.on_external_stopped(source, &mut out),
-            Event::BatteryLow => self.battery_low = true,
-            Event::BatteryOk => self.battery_low = false,
             Event::WifiSetupEnded => self.wifi_setup = false,
             Event::PowerOff => self.power_off(&mut out),
             Event::Control(command) => self.on_control(now, command, &mut out),
@@ -482,8 +478,6 @@ impl Core {
             LedState::WifiSetup
         } else if self.pairing_until.is_some() {
             LedState::BluetoothPairing
-        } else if self.battery_low {
-            LedState::BatteryLow
         } else if self.external == Some(ExternalSource::AirPlay) {
             LedState::AirPlay
         } else if matches!(self.state, State::Playing { .. }) {

@@ -126,7 +126,6 @@ pub async fn apply_instant(app: &mut App, bench: &Bench, now: Millis, step: &Ste
         Step::Release(button) => app.handle(now, Event::Button { button: *button, state: ButtonState::Released }).await,
         Step::External(source, true) => app.handle(now, Event::ExternalStarted(*source)).await,
         Step::External(source, false) => app.handle(now, Event::ExternalStopped(*source)).await,
-        Step::Battery(low) => app.handle(now, if *low { Event::BatteryLow } else { Event::BatteryOk }).await,
         Step::PowerOff => app.handle(now, Event::PowerOff).await,
         Step::WifiDone => app.handle(now, Event::WifiSetupEnded).await,
         Step::PowerCut => bail!("`power cut` is handled by the runner"),

@@ -13,7 +13,7 @@ Rust is a good fit: one static binary, low RAM on the Zero 2 W (512 MB), no inte
 
 - **LED PWM:** only GPIO12 of the LED pins (12/16/26) is a hardware PWM pin. Mixed colours need the kernel `pwm-gpio` software-PWM driver (hrtimer based, Pi kernel 6.6.62+, in Trixie); every pin becomes a `/sys/class/pwm` channel.
 - **PN532 on Pi I²C:** clock stretching is handled badly by the Pi's controller. Lower the bus speed (`dtparam=i2c_arm_baudrate=100000` or less); budget for retries in the driver. Use the IRQ line (GPIO4) to wait for cards instead of polling.
-- **Battery:** the LiFePO4wered/Pi+ (I²C 0x43) is owned by its own daemon. tapboxd reads state through it (`lifepo4wered-cli`), never from the bus, so there's no contention with the PN532.
+- **Power:** mains only, no battery. Power is cut without warning (switch or plug), so tapboxd never needs a shutdown to stay consistent; see `architecture.md`, Robustness.
 
 ## Target and build
 
@@ -42,7 +42,7 @@ PipeWire runs as a user service, so the audio stack runs as a dedicated `tapbox`
 reader ──┐                          ┌─> player (sim / mpv)
 buttons ─┼─> Event ─> Core ─> Command ┼─> LED
 bt/airplay┤   (pure, no clock)       ├─> Bluetooth / AirPlay
-battery ─┘                          └─> state store
+web app ─┘                          └─> state store
 ```
 
 - `Core::handle(now, Event) -> Vec<Command>`: no tokio, no I/O, no clock. Every rule is a unit test, and the testbench can drive it on a virtual clock.

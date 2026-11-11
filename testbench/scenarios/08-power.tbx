@@ -1,8 +1,8 @@
-# Power: the master switch cuts power with no warning. That is fine: switching
+# Power: the power switch cuts power with no warning. That is fine: switching
 # off is a fresh start. Only the parents' max volume survives (hearing
 # protection); Wi-Fi and Bluetooth pairings are kept by the system, not tapboxd.
 
-# Clean shutdown (low battery, `poweroff`): stop playing, show it on the LED.
+# Clean shutdown (`poweroff`, an update): stop playing, show it on the LED.
 tap story-440
 wait 42s
 power off

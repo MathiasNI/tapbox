@@ -157,7 +157,6 @@ fn led_name(state: LedState) -> &'static str {
         LedState::AirPlay => "airplay",
         LedState::BluetoothPairing => "bt-pairing",
         LedState::WifiSetup => "wifi-setup",
-        LedState::BatteryLow => "battery-low",
         LedState::ShuttingDown => "shutting-down",
     }
 }

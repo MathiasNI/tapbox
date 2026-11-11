@@ -8,7 +8,7 @@ flowchart LR
   reader --> daemon[tapboxd]
   buttons[Buttons] --> daemon
   web[Phone web app] <--> daemon
-  battery[LiFePO4wered daemon] --> daemon
+  power[USB-C 5 V supply] --> switch[Power switch] --> daemon
   daemon --> resolver[Resolver: local hash, cache, URL, plugins]
   resolver --> player[mpv]
   resolver --> spotify[go-librespot API]
@@ -30,7 +30,6 @@ The daemon is Rust (`tapboxd`), split into small crates. Research and crate choi
 | Core (`tapbox-core`) | State machine: events in, commands out. Arbitration, resume, card-lifted behaviour, gestures | Pure Rust, no I/O, no clock |
 | Reader | Wait for PN532 card present/removed (IRQ, polling fallback), emit UID and NDEF bytes | `pn532` + `linux-embedded-hal` (I²C) |
 | Buttons, LED | Debounced button events; RGB status light | `gpiocdev` (kernel debounce); sysfs PWM via `pwm-gpio` overlay |
-| Battery | Battery level, low-battery and shutdown events | LiFePO4wered/Pi+ daemon (`lifepo4wered-cli`) |
 | Resolver | Turn sources into something playable: local library by hash → cache → download (verify hash) → plugin | `reqwest` (rustls), `sha2` |
 | Player | Play/pause/volume, resume position per card (in memory, per session) | mpv as supervised child, typed JSON-IPC client |
 | Arbiter | Decide which source owns the speaker (rules in the core) | BlueZ over D-Bus, shairport-sync hooks |
@@ -74,12 +73,12 @@ Rule: **last source to start wins.**
 
 - Read-only root with overlayfs (**required**: the master switch cuts power without warning), data on a separate writable partition (library, cache, settings).
 - tapboxd writes only on purpose, never during playback: parent settings (`state.json`), card links and the box name (`box.json`), the library index, and uploads (streamed to a `.part` file, renamed when complete). JSON files are written atomically (temp → fsync → rename → fsync dir). Wi-Fi and Bluetooth pairings (NetworkManager, BlueZ) live on the writable data partition.
-- Power on/off is a latching master switch in the battery line. OFF is a hard cut; ON boots via the LiFePO4wered/Pi+ `AUTO_BOOT_VBAT` setting. Switching off is a fresh start by design: resume positions and volume live in memory only; the testbench's `power cut` checks this. On low battery the board still shuts the Pi down cleanly (GPIO14 shutdown detect); tapboxd sees that as SIGTERM and stops playing.
+- Mains powered, no battery. A rocker switch breaks the 5 V line from the USB-C socket; OFF (or pulling the plug) is a hard cut, ON boots the Pi. Switching off is a fresh start by design: resume positions and volume live in memory only; the testbench's `power cut` checks this. A clean `poweroff` (updates, maintenance) reaches tapboxd as SIGTERM, and it stops playing.
 - Card data is untrusted input: size limits, allowed schemes only, no local paths from cards, hashes verified after download. No panics on card data (`unwrap`/`expect`/`panic` denied outside tests).
 
 ## Testbench
 
-Before any hardware exists, `tapboxd sim` and `tapboxd test` run the same app against simulated hardware; see [`testbench.md`](testbench.md). The pieces that are simulated today (reader, buttons, LED, battery, Bluetooth/AirPlay, system actions) are replaced one at a time by real drivers.
+Before any hardware exists, `tapboxd sim` and `tapboxd test` run the same app against simulated hardware; see [`testbench.md`](testbench.md). The pieces that are simulated today (reader, buttons, LED, Bluetooth/AirPlay, Wi-Fi, system actions) are replaced one at a time by real drivers.
 
 ## Language and quality bar
 

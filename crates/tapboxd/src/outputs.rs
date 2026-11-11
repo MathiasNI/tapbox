@@ -113,7 +113,6 @@ pub fn describe_led(state: LedState) -> &'static str {
         LedState::AirPlay => "purple (AirPlay)",
         LedState::BluetoothPairing => "blue blinking (Bluetooth pairing)",
         LedState::WifiSetup => "orange blinking (Wi-Fi setup)",
-        LedState::BatteryLow => "red slow blink (battery low)",
         LedState::ShuttingDown => "white fading out (shutting down)",
     }
 }

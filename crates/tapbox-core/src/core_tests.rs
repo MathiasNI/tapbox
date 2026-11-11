@@ -332,13 +332,6 @@ fn only_max_volume_survives_restart() {
 }
 
 #[test]
-fn low_battery_led() {
-    let mut b = Bench::new();
-    assert!(has(&b.send(Event::BatteryLow), &Command::Led(LedState::BatteryLow)));
-    assert!(has(&b.send(Event::BatteryOk), &Command::Led(LedState::Idle)));
-}
-
-#[test]
 fn player_failure_flashes_error_and_goes_idle() {
     let mut b = Bench::new();
     b.tap(1, content("a"));

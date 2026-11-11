@@ -18,7 +18,7 @@ Collected 2026-11-08. Re-check versions and limits before relying on them.
 
 - **PN532, not RC522.** The RC522 is limited to MIFARE Classic; the PN532 also reads MIFARE Ultralight and NTAG stickers.
 - Use **I²C** (four wires, DIP switch set to I²C) with Adafruit's CircuitPython PN532 library on Blinka, in a venv. Many older Pi guides use libraries that no longer run on current Pi OS.
-- Typical read range is 3–5 cm, less through thick plastic. Keep metal (battery, speaker magnet) away from the antenna.
+- Typical read range is 3–5 cm, less through thick plastic. Keep metal (speaker magnet, screws) away from the antenna.
 
 ## Audio output
 
